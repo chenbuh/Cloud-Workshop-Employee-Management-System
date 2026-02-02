@@ -1,0 +1,29 @@
+{
+  "name": "frontend",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vuedx-typecheck . && vite build"
+  },
+  "dependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@vicons/ionicons5": "^0.13.0",
+    "axios": "^1.13.4",
+    "echarts": "^6.0.0",
+    "markdown-it": "^14.1.0",
+    "moment": "^2.30.1",
+    "naive-ui": "^2.43.2",
+    "pinia": "^3.0.4",
+    "vue-router": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vue/compiler-sfc": "^3.0.4",
+    "@vuedx/typecheck": "^0.3.1-insiders-1606311019.0",
+    "@vuedx/typescript-plugin-vue": "^0.3.1-insiders-1606311019.0",
+    "typescript": "^4.1.2",
+    "vite": "^7.3.1",
+    "vue": "^3.5.27"
+  }
+}

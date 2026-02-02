@@ -1,0 +1,48 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cloud-employee-system
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/cloud_ems?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: root
+    password: chen20040209
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+############## Sa-Token Configuration ##############
+sa-token: 
+  # Token name (hash to storage)
+  token-name: satoken
+  # Token timeout using seconds (def 30 days)
+  timeout: 2592000
+  # Activity timeout (def -1: never expire)
+  activity-timeout: -1
+  # Allow concurrent login
+  is-concurrent: true
+  # Share token via same redis
+  is-share: true
+  # Token style (uuid, simple-uuid, tik)
+  token-style: uuid
+  # Is print log
+  is-log: false
+# File Upload Configuration
+upload:
+  path: e:/Project/Cloud Workshop Employee Management System/uploads/
+  # Static mapping for web access
+  mapping: /api/v1/files/**
