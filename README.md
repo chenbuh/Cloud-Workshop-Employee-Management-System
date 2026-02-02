@@ -69,30 +69,36 @@
 
 ## 🛠️ 快速部署指南
 
-### 环境准备
+### 第一步：获取源码
+```bash
+git clone https://github.com/chenbuh/Cloud-Workshop-Employee-Management-System.git
+cd Cloud-Workshop-Employee-Management-System
+```
+
+### 第二步：环境准备
 - **Java**: JDK 17 或以上
 - **MySQL**: 8.0.x
 - **Redis**: 任意版本即可
 - **Node.js**: 16.x +
 - **IDE**: IntelliJ IDEA (推荐) + VS Code
 
-### 第一步：数据库初始化
+### 第三步：数据库初始化
 1. 创建数据库：`CREATE DATABASE cloud_ems CHARACTER SET utf8mb4;`
 2. 运行 `docs/db/schema.sql` (创建表结构)
 3. 运行 `docs/db/init_full.sql` (插入演示数据及初始权限)
 
-### 第二步：启动后端
+### 第四步：启动后端
 1. 进入 `backend` 目录，检查 `application.yml` 中的数据库配置（宿主机 IP、账号、密码）。
 2. 运行 `mvn clean install`。
 3. 启动 `com.cloud.employee.EmployeeManagementApplication`。
 
-### 第三步：启动前端
+### 第五步：启动前端
 1. 进入 `frontend` 目录。
 2. 安装依赖：`npm install`。
 3. 开发模式启动：`npm run dev`。
 4. 编译构建：`npm run build`。
 
-### 第四步：访问及账号
+### 第六步：访问及账号
 访问地址：`http://localhost:5173`
 
 **超级管理员登录信息：**
