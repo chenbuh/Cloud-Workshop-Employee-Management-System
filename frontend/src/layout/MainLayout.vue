@@ -134,10 +134,11 @@
       </n-space>
     </template>
   </n-modal>
+  <internal-chat />
 </template>
 
 <script setup lang="ts">
-import { ref, h, onMounted, reactive } from 'vue'
+import { ref, h, onMounted, reactive, computed } from 'vue'
 import type { Component } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
@@ -166,15 +167,19 @@ import {
   SearchOutline,
   FlashOutline,
   BookOutline,
-  KeyOutline
+  KeyOutline,
+  ChatbubbleEllipsesOutline
 } from '@vicons/ionicons5'
 import { getInfo, logout, updatePassword } from '../api/auth'
 import { getNotificationList, getUnreadCount, readAllNotifications, readNotification } from '../api/notification'
 import { globalSearch } from '../api/search'
 import { useUserStore } from '../store/user'
+import { useChatStore } from '../store/chat'
+import InternalChat from '../components/InternalChat.vue'
 import moment from 'moment'
 
 const userStore = useUserStore()
+const chatStore = useChatStore()
 const router = useRouter()
 const route = useRoute()
 const message = useMessage()
@@ -277,7 +282,7 @@ function renderIcon(icon: Component) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
-const menuOptions = [
+const menuOptions = computed(() => [
   {
     label: '仪表盘',
     key: 'dashboard',
@@ -295,6 +300,10 @@ const menuOptions = [
       {
         label: '入职漏斗',
         key: 'onboarding'
+      },
+      {
+        label: '招聘管理 (ATS)',
+        key: 'recruitment'
       }
     ]
   },
@@ -334,6 +343,14 @@ const menuOptions = [
     icon: renderIcon(DocumentTextOutline)
   },
   {
+    label: () => h('div', { style: 'display: flex; align-items: center; justify-content: space-between; width: 100%' }, [
+        h('span', null, '内部沟通'),
+        chatStore.totalUnreadCount > 0 ? h(NBadge, { value: chatStore.totalUnreadCount, dot: true, processing: true, style: 'margin-left: 8px' }) : null
+    ]),
+    key: 'chat',
+    icon: renderIcon(ChatbubbleEllipsesOutline)
+  },
+  {
     label: '企业知识库',
     key: 'document',
     icon: renderIcon(BookOutline)
@@ -370,7 +387,7 @@ const menuOptions = [
     key: 'settings',
     icon: renderIcon(SettingsOutline)
   }
-]
+])
 
 const handleMenuUpdate = (key: string) => {
   activeKey.value = key

@@ -80,4 +80,11 @@ public interface EmpProfileMapper extends BaseMapper<EmpProfile> {
                         "</script>")
         java.util.List<com.cloud.employee.vo.EmployeeExportVO> selectAllForExport(@Param("keyword") String keyword,
                         @Param("deptId") Long deptId);
+
+        @Select("SELECT e.id, e.user_id, e.emp_code, e.full_name, e.dept_id, d.dept_name, e.job_title " +
+                        "FROM emp_profile e " +
+                        "LEFT JOIN sys_dept d ON e.dept_id = d.id " +
+                        "WHERE e.status != 3 " +
+                        "ORDER BY e.create_time DESC")
+        List<EmpProfileVO> selectAllForDropdown();
 }

@@ -75,6 +75,7 @@
              filterable 
              placeholder="选择员工"
              :disabled="!!appraisalForm.id"
+             virtual-scroll
            />
         </n-form-item>
         <n-form-item label="绩效评分">
@@ -89,6 +90,24 @@
         </n-form-item>
         <n-form-item label="评价详情">
            <n-input v-model:value="appraisalForm.comment" type="textarea" placeholder="输入具体的绩效反馈..." />
+        </n-form-item>
+        
+        <n-divider title-placement="left">关键绩效指标 (KPIs)</n-divider>
+        <div v-for="(kpi, index) in appraisalForm.kpiList" :key="index" style="margin-bottom: 10px; display: flex; gap: 10px;">
+           <n-input v-model:value="kpi.objective" placeholder="指标名称" style="flex: 2" />
+           <n-input-number v-model:value="kpi.weight" placeholder="权重%" :min="0" :max="100" style="flex: 1" :show-button="false" />
+           <n-input-number v-model:value="kpi.score" placeholder="得分" :min="0" :max="100" style="flex: 1" :show-button="false" />
+           <n-button circle type="error" ghost @click="removeKpi(index)">
+             <template #icon><n-icon :component="TrashOutline" /></template>
+           </n-button>
+        </div>
+        <div v-if="appraisalForm.kpiList.length === 0" style="text-align: center; color: #94a3b8; margin-bottom: 10px;">
+           暂无 KPI 指标，请点击下方按钮添加
+        </div>
+        <n-button dashed block @click="addKpi" style="margin-bottom: 20px">+ 添加 KPI 指标</n-button>
+
+        <n-form-item label="下期目标">
+           <n-input v-model:value="appraisalForm.nextGoals" type="textarea" placeholder="设定下一个周期的核心目标..." :rows="3" />
         </n-form-item>
       </n-form>
       <template #footer>
@@ -106,12 +125,12 @@ import { ref, onMounted, reactive, h, computed } from 'vue'
 import { 
   NSelect, NButton, NIcon, NGrid, NGi, NDataTable, NSpace, NModal, 
   NForm, NFormItem, NInput, NDatePicker, NTag, useMessage,
-  NInputNumber, NRate
+  NInputNumber, NRate, NDivider
 } from 'naive-ui'
-import { AddOutline, CreateOutline, PencilOutline } from '@vicons/ionicons5'
+import { AddOutline, CreateOutline, PencilOutline, TrashOutline } from '@vicons/ionicons5'
 import * as echarts from 'echarts'
 import { listCycles, addCycle, listAppraisals, submitAppraisal } from '../api/performance'
-import { getEmployeeList } from '../api/employee'
+import { getEmployeeListAll } from '../api/employee'
 
 const message = useMessage()
 const loading = ref(false)
@@ -136,13 +155,15 @@ const appraisalForm = reactive({
     score: 80,
     potentialScore: 3,
     rating: 'B',
-    comment: ''
+    comment: '',
+    nextGoals: '',
+    kpiList: [] as { objective: string, weight: number, score: number }[]
 })
 
 const employeeOptions = computed(() => {
     return employeeList.value.map((e: any) => ({
         label: `${e.fullName} (${e.deptName})`,
-        value: e.userId // Assuming userId is linked to empId in this context, or use id from emp table
+        value: e.id // Use primary key ID for linking
     }))
 })
 
@@ -187,7 +208,7 @@ const loadCycles = async () => {
 }
 
 const loadEmployees = async () => {
-    const res: any = await getEmployeeList()
+    const res: any = await getEmployeeListAll()
     employeeList.value = res
 }
 
@@ -197,7 +218,10 @@ const loadAppraisals = async () => {
     try {
         const res: any = await listAppraisals(selectedCycle.value)
         appraisalData.value = res
-        initNineBox()
+        // Ensure DOM is updated before chart init
+        setTimeout(() => initNineBox(), 100)
+    } catch (e: any) {
+        message.error('加载评价数据失败: ' + (e.message || '未知错误'))
     } finally {
         loading.value = false
     }
@@ -225,7 +249,9 @@ const handleAddAppraisal = () => {
         score: 80,
         potentialScore: 3,
         rating: 'B',
-        comment: ''
+        comment: '',
+        nextGoals: '',
+        kpiList: []
     })
     showAppraisalModal.value = true
 }
@@ -237,7 +263,9 @@ const handleEditAppraisal = (row: any) => {
         score: row.score,
         potentialScore: row.potentialScore,
         rating: row.rating,
-        comment: row.comment
+        comment: row.comment,
+        nextGoals: row.nextGoals || '',
+        kpiList: row.kpiDetails ? JSON.parse(row.kpiDetails) : []
     })
     showAppraisalModal.value = true
 }
@@ -249,7 +277,8 @@ const handleSubmitAppraisal = async () => {
     try {
         await submitAppraisal({
             ...appraisalForm,
-            cycleId: selectedCycle.value
+            cycleId: selectedCycle.value,
+            kpiDetails: JSON.stringify(appraisalForm.kpiList)
         })
         message.success('评价已提交')
         showAppraisalModal.value = false
@@ -261,15 +290,16 @@ const handleSubmitAppraisal = async () => {
     }
 }
 
-const initNineBox = () => {
+    const addKpi = () => appraisalForm.kpiList.push({ objective: '', weight: 0, score: 0 })
+    const removeKpi = (idx: number) => appraisalForm.kpiList.splice(idx, 1)
+
+    const initNineBox = () => {
     if (!nineBoxRef.value) return
     if (!nineBoxChart) {
         nineBoxChart = echarts.init(nineBoxRef.value)
     }
 
     // Prepare data for 9-box: X = Score (Normalized to 1-3), Y = Potential (Normalized to 1-3)
-    // Box 1 (1,1): Low Perform, Low Pot -> "Under Performer"
-    // Box 9 (3,3): High Perform, High Pot -> "Star / Future Leader"
     const seriesData = appraisalData.value.map((item: any) => {
         // Map 0-100 score to 1-3
         let perfLevel = 1
@@ -317,15 +347,22 @@ const initNineBox = () => {
                     const r = params.data.item.rating
                     return r === 'S' || r === 'A' ? '#10b981' : r === 'B' ? '#6366f1' : '#f59e0b'
                 } 
+            },
+            markArea: {
+                silent: true,
+                data: [
+                    // Low/Low -> Underperformer (Red)
+                    [{ coord: [0, 0], itemStyle: { color: 'rgba(239, 68, 68, 0.1)' } }, { coord: [1, 1] }],
+                    // High/High -> Star (Green)
+                    [{ coord: [2, 2], itemStyle: { color: 'rgba(16, 185, 129, 0.15)' } }, { coord: [3, 3] }],
+                    // Mid/Mid -> Core (Blue)
+                    [{ coord: [1, 1], itemStyle: { color: 'rgba(99, 102, 241, 0.05)' } }, { coord: [2, 2] }],
+                    // Others can be left default or added
+                    [{ coord: [0, 2], itemStyle: { color: 'rgba(245, 158, 11, 0.1)' } }, { coord: [1, 3] }], // High Pot, Low Perf
+                    [{ coord: [2, 0], itemStyle: { color: 'rgba(99, 102, 241, 0.1)' } }, { coord: [3, 1] }]  // High Perf, Low Pot
+                ]
             }
-        }],
-        graphic: [
-            // Example labels for boxes
-            { type: 'text', left: '80%', top: '15%', style: { text: '明星人才', fill: '#10b981', font: 'bold 12px sans-serif' } },
-            { type: 'text', left: '15%', top: '85%', style: { text: '待调整', fill: '#ef4444', font: 'bold 12px sans-serif' } },
-            { type: 'text', left: '15%', top: '15%', style: { text: '潜力股', fill: '#f59e0b', font: 'bold 12px sans-serif' } },
-            { type: 'text', left: '80%', top: '85%', style: { text: '熟练工', fill: '#6366f1', font: 'bold 12px sans-serif' } }
-        ]
+        }]
     }
 
     nineBoxChart.setOption(option)

@@ -84,4 +84,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setPassword(passwordEncoder.encode(newPassword));
         this.updateById(user);
     }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getChatUsers() {
+        return this.baseMapper.selectChatUsers();
+    }
 }

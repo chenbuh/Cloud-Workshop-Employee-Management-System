@@ -1,10 +1,19 @@
 import request from '../utils/request'
 
+// 分页查询
 export function getEmployeeList(params: any = {}) {
     return request({
         url: '/employee/list',
         method: 'get',
         params
+    })
+}
+
+// 下拉框全量查询
+export function getEmployeeListAll() {
+    return request({
+        url: '/employee/list-all',
+        method: 'get'
     })
 }
 

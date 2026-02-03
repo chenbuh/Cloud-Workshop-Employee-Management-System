@@ -13,4 +13,6 @@ public interface ISysUserService extends IService<SysUser> {
     boolean updateUserMenus(Long userId, java.util.List<Long> menuIds);
 
     void updatePassword(Long userId, String oldPassword, String newPassword);
+
+    java.util.List<java.util.Map<String, Object>> getChatUsers();
 }

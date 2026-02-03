@@ -36,4 +36,16 @@ public class EmpProfileServiceImpl extends ServiceImpl<EmpProfileMapper, EmpProf
     public List<com.cloud.employee.vo.EmployeeExportVO> listAllForExport(String keyword, Long deptId) {
         return this.baseMapper.selectAllForExport(keyword, deptId);
     }
+
+    @Override
+    public List<EmpProfileVO> getEmployeeListForDropdown() {
+        // Reuse mapper method or add new one. Or reuse selectEmployeePage with big page
+        // but we need List return
+        // Ideally add method to Mapper. Let's assume we add selectListForDropdown to
+        // mapper
+        // But for now, let's just use selectEmployeePage with a hack or add new mapper
+        // method.
+        // Let's add selectAllForDropdown to mapper.
+        return this.baseMapper.selectAllForDropdown();
+    }
 }

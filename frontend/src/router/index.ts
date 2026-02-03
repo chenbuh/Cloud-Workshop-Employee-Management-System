@@ -102,6 +102,16 @@ const routes: any[] = [
         path: 'settings',
         name: 'Settings',
         component: () => import('../views/SettingsView.vue')
+      },
+      {
+        path: 'recruitment',
+        name: 'Recruitment',
+        component: () => import('../views/RecruitmentATS.vue')
+      },
+      {
+        path: 'chat',
+        name: 'Chat',
+        component: () => import('../views/ChatView.vue')
       }
     ]
   },

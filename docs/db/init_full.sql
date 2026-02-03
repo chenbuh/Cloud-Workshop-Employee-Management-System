@@ -87,6 +87,18 @@ CREATE TABLE IF NOT EXISTS `emp_salary` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工薪资表';
 
+-- 5. 聊天记录表
+CREATE TABLE IF NOT EXISTS `sys_chat_message` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `from_user_id` BIGINT NOT NULL COMMENT '发送者ID',
+    `to_user_id` BIGINT COMMENT '接收者ID (NULL表示群发或公共频道)',
+    `content` TEXT COMMENT '内容',
+    `type` VARCHAR(10) DEFAULT 'text' COMMENT '类型 (text, image, file)',
+    `is_read` TINYINT DEFAULT 0 COMMENT '是否已读 (0未读 1已读)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天记录表';
+
 -- SEED DATA
 -- Insert Admin User (Password: admin123)
 -- In real app, password should be hashed. Here we use plain 'admin123' as per the simple logic we wrote.

@@ -21,6 +21,8 @@ public class SysPerformanceAppraisal implements Serializable {
     private String rating;
     private Integer potentialScore;
     private String comment;
+    private String nextGoals;
+    private String kpiDetails; // Stored as JSON string
     private Long reviewerId;
     private Integer status; // 1待评 2已评价
     private Date createTime;

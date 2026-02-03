@@ -49,6 +49,26 @@ public class EmployeeController {
         return Result.success(empProfileService.getEmployeePage(page, keyword, deptId));
     }
 
+    // 全量列表 (无分页)
+    @GetMapping("/list-all")
+    public Result<List<EmpProfileVO>> listAll() {
+        return Result.success(empProfileService.getEmployeeListForDropdown());
+    }
+
+    // 获取详情 (Moves to avoid conflict if /{id} matches first, though usually static
+    // matches first, but let's be safe or check regex)
+    // Actually Spring matches specific paths first. 'list-all' serves as ID?
+    // Failed to convert value of type 'java.lang.String' to required type
+    // 'java.lang.Long'; For input string: "list-all"
+    // This happens because @GetMapping("/{id}") is capturing "list-all" when the
+    // request is made.
+    // Ensure list-all is defined BEFORE /{id} OR use regex for id.
+    // In this file, list-all IS defined before /{id} (lines 53 vs 83).
+    // However, if the request is being routed to getInfo, it means Spring thinks
+    // list-all is an ID.
+    // Wait, 53 is BEFORE 83.
+    // But maybe I should make id numeric only.
+
     // 新增员工 (入职)
     @Log(title = "员工入职", businessType = 1)
     @PostMapping("/onboard")
@@ -62,7 +82,7 @@ public class EmployeeController {
     }
 
     // 获取详情
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public Result<EmpProfile> getInfo(@PathVariable Long id) {
         return Result.success(empProfileService.getById(id));
     }

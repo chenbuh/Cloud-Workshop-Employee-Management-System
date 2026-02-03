@@ -16,4 +16,6 @@ public interface IEmpProfileService extends IService<EmpProfile> {
     Page<EmpProfileVO> getEmployeePage(Page<EmpProfileVO> page, String keyword, Long deptId);
 
     java.util.List<com.cloud.employee.vo.EmployeeExportVO> listAllForExport(String keyword, Long deptId);
+
+    List<EmpProfileVO> getEmployeeListForDropdown();
 }

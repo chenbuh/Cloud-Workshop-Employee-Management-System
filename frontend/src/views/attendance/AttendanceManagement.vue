@@ -25,16 +25,57 @@
         />
       </n-space>
     </div>
-    <div class="charts-section glass-effect" v-show="attendanceData.length > 0">
-      <div class="chart-header">
-        <div class="chart-title">打卡趋势分析 (Abnormality Trend)</div>
-        <div class="chart-tip">基于选定周期内的考勤波动情况</div>
+    <div class="dashboard-grid">
+      <div class="charts-section glass-effect main-chart">
+        <div class="chart-header">
+          <div class="chart-title">打卡趋势分析 (Abnormality Trend)</div>
+          <div class="chart-tip">基于选定周期内的考勤波动情况</div>
+        </div>
+        <div ref="attendanceTrendRef" style="height: 300px; width: 100%"></div>
       </div>
-      <div ref="attendanceTrendRef" style="height: 300px; width: 100%"></div>
+      
+      <div class="charts-section glass-effect side-chart">
+        <div class="chart-header">
+          <div class="chart-title">状态分布 (Distribution)</div>
+        </div>
+        <div ref="attendancePieRef" style="height: 300px; width: 100%"></div>
+      </div>
     </div>
 
+    <!-- 统计摘要 -->
+    <div class="summary-cards">
+      <div class="glass-effect summary-card">
+        <div class="icon-box info"><n-icon :component="StatsChartOutline" /></div>
+        <div class="card-content">
+          <div class="label">本次查询总记录</div>
+          <div class="value">{{ attendanceData.length }} <span class="unit">条</span></div>
+        </div>
+      </div>
+      <div class="glass-effect summary-card">
+        <div class="icon-box primary"><n-icon :component="TimeOutline" /></div>
+        <div class="card-content">
+          <div class="label">累计工作时长</div>
+          <div class="value">{{ totalWorkHours.toFixed(1) }} <span class="unit">小时</span></div>
+        </div>
+      </div>
+      <div class="glass-effect summary-card" :class="{ 'has-abnormal': abnormalCount > 0 }">
+        <div class="icon-box error"><n-icon :component="AlertCircleOutline" /></div>
+        <div class="card-content">
+          <div class="label">异常打卡统计</div>
+          <div class="value">{{ abnormalCount }} <span class="unit">次</span></div>
+        </div>
+      </div>
+      <div class="glass-effect summary-card">
+        <div class="icon-box success"><n-icon :component="CheckmarkCircleOutline" /></div>
+        <div class="card-content">
+          <div class="label">出勤率 (Normal Rate)</div>
+          <div class="value">{{ attendanceRate }} <span class="unit">%</span></div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Edit Modal -->
-    <n-modal v-model:show="showEditModal" preset="card" title="修正考勤记录" style="width: 500px">
+    <n-modal v-model:show="showEditModal" preset="card" title="修正考勤记录" style="width: 500px" class="glass-modal">
       <n-form :model="editForm" label-placement="left" label-width="100px">
         <n-form-item label="员工姓名">
           <n-input :value="editForm.full_name" disabled />
@@ -58,31 +99,23 @@
           <n-button type="primary" @click="handleSave" :loading="saving">保存修正</n-button>
         </n-space>
       </template>
-      </n-modal>
-    
-    <!-- 统计摘要 -->
-    <div class="summary-cards">
-      <div class="glass-effect summary-card">
-        <div class="label">本次查询总记录</div>
-        <div class="value">{{ attendanceData.length }} <span class="unit">条</span></div>
-      </div>
-      <div class="glass-effect summary-card">
-        <div class="label">累计工作时长</div>
-        <div class="value">{{ totalWorkHours.toFixed(1) }} <span class="unit">小时</span></div>
-      </div>
-      <div class="glass-effect summary-card" :class="{ 'has-abnormal': abnormalCount > 0 }">
-        <div class="label">异常打卡统计</div>
-        <div class="value">{{ abnormalCount }} <span class="unit">次</span></div>
-      </div>
-    </div>
-    
+    </n-modal>
+
     <div class="content-table glass-effect">
+      <div class="table-header">
+         <h3>数据明细</h3>
+         <n-button v-if="checkedRowKeys.length > 0" type="error" ghost size="small" @click="handleBatchDelete">
+           批量删除 ({{ checkedRowKeys.length }})
+         </n-button>
+      </div>
       <n-data-table 
+        v-model:checked-row-keys="checkedRowKeys"
         :columns="columns" 
         :data="attendanceData" 
         :loading="loading"
         :bordered="false"
         scroll-x="1000"
+        :row-key="(row) => row.id"
       />
     </div>
   </div>
@@ -94,10 +127,13 @@ import {
   NButton, NDataTable, NDatePicker, NSelect, NSpace, NTag, useMessage, 
   NIcon, NModal, NForm, NFormItem, NInput, NTimePicker, useDialog 
 } from 'naive-ui'
-import { CloudDownloadOutline, PencilOutline, TrashOutline } from '@vicons/ionicons5'
+import { 
+  CloudDownloadOutline, PencilOutline, TrashOutline, 
+  StatsChartOutline, TimeOutline, AlertCircleOutline, CheckmarkCircleOutline 
+} from '@vicons/ionicons5'
 import * as echarts from 'echarts'
 import { getAllAttendance, updateAttendance, deleteAttendance } from '../../api/attendance'
-import { getEmployeeList } from '../../api/employee'
+import { getEmployeeListAll } from '../../api/employee'
 import moment from 'moment'
 
 const message = useMessage()
@@ -110,7 +146,10 @@ const selectedUserId = ref<number | null>(null)
 const employeeList = ref([])
 
 const attendanceTrendRef = ref<HTMLElement | null>(null)
+const attendancePieRef = ref<HTMLElement | null>(null)
 let trendChart: echarts.ECharts | null = null
+let pieChart: echarts.ECharts | null = null
+const checkedRowKeys = ref([])
 
 const showEditModal = ref(false)
 const editForm = reactive({
@@ -156,13 +195,20 @@ const abnormalCount = computed(() => {
   return attendanceData.value.filter(row => row.status !== 1).length
 })
 
+const attendanceRate = computed(() => {
+  if (attendanceData.value.length === 0) return 0
+  const normal = attendanceData.value.filter(row => row.status === 1).length
+  return Math.round((normal / attendanceData.value.length) * 100)
+})
+
 // Helper functions for CSV Export
 const formatDate = (d: any) => d ? moment(d).format('YYYY-MM-DD') : ''
 const formatTime = (d: any) => d ? moment(d).format('HH:mm:ss') : ''
 
-const columns = [
-  { title: '工号', key: 'emp_code', width: 100 },
-  { title: '姓名', key: 'full_name', width: 100 },
+const columns: any = [
+  { type: 'selection', fixed: 'left' },
+  { title: '工号', key: 'emp_code', width: 90, fixed: 'left' },
+  { title: '姓名', key: 'full_name', width: 100, fixed: 'left' },
   { title: '部门', key: 'dept_name', width: 120 },
   { 
     title: '日期', 
@@ -212,7 +258,10 @@ const columns = [
     title: '打卡IP',
     key: 'ip_address',
     width: 130,
-    render: (row: any) => row.ip_address || '-'
+    render: (row: any) => {
+        const ip = row.ip_address || '-'
+        return ip === '0:0:0:0:0:0:0:1' ? '127.0.0.1' : ip
+    }
   },
   {
     title: '操作',
@@ -253,7 +302,10 @@ const loadData = async () => {
     }
     
     attendanceData.value = await getAllAttendance(params) as any
-    nextTick(initTrendChart)
+    nextTick(() => {
+        initTrendChart()
+        initPieChart()
+    })
   } catch (error: any) {
     message.error(error.message || '加载考勤数据失败')
   } finally {
@@ -304,9 +356,64 @@ const initTrendChart = () => {
     trendChart.setOption(option)
 }
 
+const initPieChart = () => {
+    if (!attendancePieRef.value || attendanceData.value.length === 0) return
+    if (!pieChart) pieChart = echarts.init(attendancePieRef.value)
+    
+    const stats: any = { 1: 0, 2: 0, 3: 0, 4: 0, 0: 0 }
+    attendanceData.value.forEach(row => stats[row.status]++)
+    
+    const data = statusOptions.map(opt => ({
+        name: opt.label,
+        value: stats[opt.value]
+    })).filter(d => d.value > 0)
+
+    const option = {
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        series: [
+            {
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: { borderRadius: 8 },
+                label: { show: false, position: 'center' },
+                emphasis: { label: { show: true, fontSize: '18', fontWeight: 'bold' } },
+                data: data.map(d => {
+                    const colorMap: any = { '正常': '#10b981', '迟到': '#f59e0b', '早退': '#f59e0b', '异常': '#ef4444', '缺勤': '#94a3b8' }
+                    return { ...d, itemStyle: { color: colorMap[d.name] } }
+                })
+            }
+        ]
+    }
+    pieChart.setOption(option)
+}
+
+const handleBatchDelete = () => {
+    dialog.warning({
+        title: '批量删除确认',
+        content: `确定要删除所选的 ${checkedRowKeys.value.length} 条考勤记录吗？此操作不可撤销。`,
+        positiveText: '确认删除',
+        negativeText: '取消',
+        onPositiveClick: async () => {
+            try {
+                // Since our current backend API only supports single delete, we might need to loop or update backend.
+                // For now, let's try to do it via loop (not ideal but works for demonstration)
+                for (const id of checkedRowKeys.value) {
+                    await deleteAttendance(Number(id))
+                }
+                message.success('批量删除成功')
+                checkedRowKeys.value = []
+                loadData()
+            } catch (e: any) {
+                message.error('部分记录删除失败')
+            }
+        }
+    })
+}
+
 const loadEmployees = async () => {
   try {
-    employeeList.value = await getEmployeeList() as any
+    employeeList.value = await getEmployeeListAll() as any
   } catch (error: any) {
     message.error('加载员工列表失败')
   }
@@ -404,7 +511,10 @@ const exportCSV = () => {
 onMounted(async () => {
   await loadEmployees()
   await loadData()
-  window.addEventListener('resize', () => trendChart?.resize())
+  window.addEventListener('resize', () => {
+      trendChart?.resize()
+      pieChart?.resize()
+  })
 })
 </script>
 
@@ -417,9 +527,9 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px;
+  padding: 20px 24px;
   background: white;
-  border-radius: 24px;
+  border-radius: 20px;
   margin-bottom: 24px;
 }
 
@@ -429,11 +539,19 @@ onMounted(async () => {
   color: #1e293b;
 }
 
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
 .charts-section {
   padding: 24px;
   background: white;
   border-radius: 24px;
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-header {
@@ -454,43 +572,63 @@ onMounted(async () => {
 
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 24px;
   margin-bottom: 24px;
 }
 
 .summary-card {
-  padding: 24px;
+  padding: 20px;
   border-radius: 20px;
   background: white;
-  transition: transform 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .summary-card:hover {
   transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
 }
 
+.icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.icon-box.info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.icon-box.primary { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+.icon-box.error { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.icon-box.success { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+
 .summary-card.has-abnormal {
-  border-left: 4px solid #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .summary-card .label {
   color: #64748b;
-  font-size: 13px;
-  margin-bottom: 8px;
+  font-size: 12px;
+  margin-bottom: 4px;
 }
 
 .summary-card .value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
   color: #1e293b;
+  line-height: 1;
 }
 
 .summary-card .unit {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: #94a3b8;
-  margin-left: 4px;
+  margin-left: 2px;
 }
 
 .content-table {
@@ -499,9 +637,27 @@ onMounted(async () => {
   border-radius: 24px;
 }
 
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.table-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #1e293b;
+}
+
 .glass-effect {
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+}
+
+.glass-modal :deep(.n-card) {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
 }
 </style>
