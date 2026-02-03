@@ -3,18 +3,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, h } from 'vue'
+import { onMounted, h, watch } from 'vue'
 import { useNotification, NAvatar } from 'naive-ui'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '../store/chat'
+import { useUserStore } from '../store/user'
 
 const notification = useNotification()
 const router = useRouter()
 const chatStore = useChatStore()
-
-// Auth
-const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-const currentUserId = userInfo.id
+const userStore = useUserStore()
 
 const handleGlobalNotification = (msg: any) => {
     // Only show if not on chat page
@@ -44,13 +42,23 @@ const handleGlobalNotification = (msg: any) => {
     })
 }
 
-onMounted(() => {
-    // 确保 currentUserId 存在且为有效数字
-    if (currentUserId && typeof currentUserId === 'number') {
-        chatStore.initWebSocket(currentUserId)
+// 监听用户信息变化，当 ID 可用时初始化 WebSocket
+watch(() => userStore.userInfo?.id, (newId) => {
+    if (newId && typeof newId === 'number') {
+        chatStore.initWebSocket(newId)
         chatStore.setNotificationHandler(handleGlobalNotification)
     } else {
-        console.warn('Cannot initialize chat: Invalid user ID')
+        // 如果用户登出，则关闭连接
+        chatStore.closeWebSocket()
+    }
+}, { immediate: true })
+
+onMounted(() => {
+    // 组件挂载时如果已有 ID，且未连接，则初始化
+    const currentId = userStore.userInfo?.id
+    if (currentId && typeof currentId === 'number') {
+        chatStore.initWebSocket(currentId)
+        chatStore.setNotificationHandler(handleGlobalNotification)
     }
 })
 </script>

@@ -26,19 +26,19 @@
         class="glass-menu"
       />
 
-      <div class="user-profile" v-if="!collapsed">
+      <div class="user-profile" v-if="!collapsed" @click="router.push('/profile')" style="cursor: pointer">
         <div class="user-avatar">
-          <n-avatar round size="small" :src="`https://api.dicebear.com/7.x/avataaars/svg?seed=${userStore.userInfo?.nickName || 'User'}`" />
+          <n-avatar round size="small" :src="userStore.userInfo?.avatar" :fallback-src="`https://api.dicebear.com/7.x/avataaars/svg?seed=${userStore.userInfo?.nickName || 'User'}`" />
         </div>
         <div class="user-info">
           <div class="user-name">{{ userStore.userInfo?.nickName || '加载中...' }}</div>
           <div class="user-role">{{ userStore.userInfo?.userType === '00' ? '超级管理员' : '系统用户' }}</div>
         </div>
         <n-space :size="4">
-          <n-button quaternary circle size="small" @click="showPasswordModal = true">
-             <template #icon><n-icon :component="KeyOutline" /></template>
+          <n-button quaternary circle size="small" @click.stop="router.push('/profile')">
+             <template #icon><n-icon :component="PersonCircleOutline" /></template>
           </n-button>
-          <n-button quaternary circle size="small" @click="handleLogout">
+          <n-button quaternary circle size="small" @click.stop="handleLogout">
              <template #icon><n-icon :component="LogOutOutline" /></template>
           </n-button>
         </n-space>

@@ -1,6 +1,7 @@
 package com.cloud.employee.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloud.employee.annotation.Log;
 import com.cloud.employee.common.result.Result;
@@ -54,6 +55,20 @@ public class SysUserController {
             return Result.error("管理员账号不允许删除");
         }
         return Result.success(sysUserService.removeById(id));
+    }
+
+    @Log(title = "更新个人资料", businessType = 2)
+    @PostMapping("/updateProfile")
+    public Result<Boolean> updateProfile(@RequestBody SysUser user) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        user.setId(userId);
+        // 不允许通过此接口修改这些字段
+        user.setUserName(null);
+        user.setPassword(null);
+        user.setDelFlag(null);
+        user.setStatus(null);
+
+        return Result.success(sysUserService.updateById(user));
     }
 
     @GetMapping("/menu-ids/{userId}")

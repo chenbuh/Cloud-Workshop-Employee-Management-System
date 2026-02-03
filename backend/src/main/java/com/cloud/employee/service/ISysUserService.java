@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloud.employee.entity.SysUser;
 
 public interface ISysUserService extends IService<SysUser> {
-    String login(String username, String password);
+    java.util.Map<String, Object> login(String username, String password);
 
     boolean createUser(SysUser user);
 

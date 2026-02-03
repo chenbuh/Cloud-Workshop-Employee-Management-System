@@ -33,6 +33,8 @@ public class SysUser implements Serializable {
     private String createBy;
     private Date createTime;
     private String remark;
+    private String mfaSecret; // MFA 密钥
+    private Integer mfaEnabled; // 是否开启 MFA (0否 1是)
 
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private java.util.List<Long> roleIds;

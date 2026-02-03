@@ -15,6 +15,11 @@ export const useUserStore = defineStore('user', () => {
         permissions.value = newPermissions
     }
 
+    const setUserInfo = (info: any) => {
+        userInfo.value = info
+        localStorage.setItem('userInfo', JSON.stringify(info))
+    }
+
     const hasPermission = (permission: string) => {
         return permissions.value.includes('*') || permissions.value.includes(permission)
     }
@@ -32,6 +37,7 @@ export const useUserStore = defineStore('user', () => {
         userInfo,
         setToken,
         setPermissions,
+        setUserInfo,
         hasPermission,
         logout
     }

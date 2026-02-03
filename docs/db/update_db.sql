@@ -173,3 +173,6 @@ CREATE TABLE IF NOT EXISTS `sys_document` (
 
 
 
+-- 2026-02-04: MFA (Two-Step Verification)
+ALTER TABLE `sys_user` ADD COLUMN `mfa_secret` VARCHAR(64) DEFAULT NULL COMMENT 'MFA密钥' AFTER `remark`;
+ALTER TABLE `sys_user` ADD COLUMN `mfa_enabled` TINYINT DEFAULT 0 COMMENT '是否开启MFA' AFTER `mfa_secret`;

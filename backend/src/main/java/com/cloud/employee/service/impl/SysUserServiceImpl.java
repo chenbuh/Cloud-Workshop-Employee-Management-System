@@ -10,13 +10,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements ISysUserService {
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
-    public String login(String username, String password) {
+    public Map<String, Object> login(String username, String password) {
         // 1. Check user exists
         SysUser user = this.getOne(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getUserName, username));
@@ -27,21 +30,25 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 2. Check password (BCrypt)
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            // Hotfix: If input is correct plaintext but DB has wrong hash, update it.
-            if ("chen20040209".equals(password) || "admin123".equals(password)) {
-                String newHash = passwordEncoder.encode(password);
-                user.setPassword(newHash);
-                this.updateById(user);
-            } else {
-                throw new RuntimeException("Password incorrect");
-            }
+            throw new RuntimeException("Password incorrect");
         }
 
-        // 3. Login via Sa-Token
+        Map<String, Object> result = new HashMap<>();
+
+        // 3. Check MFA
+        if (user.getMfaEnabled() != null && user.getMfaEnabled() == 1) {
+            result.put("mfaRequired", true);
+            result.put("userId", user.getId());
+            return result;
+        }
+
+        // 4. Login via Sa-Token
         StpUtil.login(user.getId());
 
-        // 4. Return token value
-        return StpUtil.getTokenValue();
+        // 5. Return token info
+        result.put("token", StpUtil.getTokenValue());
+        result.put("mfaRequired", false);
+        return result;
     }
 
     @Override

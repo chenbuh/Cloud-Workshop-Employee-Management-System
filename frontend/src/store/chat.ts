@@ -97,6 +97,14 @@ export const useChatStore = defineStore('chat', () => {
         return sum
     })
 
+    const closeWebSocket = () => {
+        if (ws.value) {
+            ws.value.onclose = null // 移除重连逻辑
+            ws.value.close()
+            ws.value = null
+        }
+    }
+
     return {
         ws,
         unreadMap,
@@ -105,6 +113,7 @@ export const useChatStore = defineStore('chat', () => {
         lastMessages,
         totalUnreadCount,
         initWebSocket,
+        closeWebSocket,
         sendMessage,
         setNotificationHandler
     }

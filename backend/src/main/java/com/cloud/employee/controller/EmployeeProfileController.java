@@ -2,8 +2,10 @@ package com.cloud.employee.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloud.employee.common.result.Result;
+import com.cloud.employee.entity.EmpProfile;
 import com.cloud.employee.entity.SysGrowthRecord;
 import com.cloud.employee.entity.SysSkill;
+import com.cloud.employee.service.IEmpProfileService;
 import com.cloud.employee.service.ISysGrowthService;
 import com.cloud.employee.service.ISysSkillService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,9 @@ public class EmployeeProfileController {
     @Autowired
     private ISysGrowthService sysGrowthService;
 
+    @Autowired
+    private IEmpProfileService empProfileService;
+
     @GetMapping("/full/{userId}")
     public Result<Map<String, Object>> getFullProfile(@PathVariable Long userId) {
         Map<String, Object> map = new HashMap<>();
@@ -34,8 +39,12 @@ public class EmployeeProfileController {
                 .eq(SysGrowthRecord::getUserId, userId)
                 .orderByDesc(SysGrowthRecord::getRecordDate));
 
+        EmpProfile profile = empProfileService.getOne(new LambdaQueryWrapper<EmpProfile>()
+                .eq(EmpProfile::getUserId, userId));
+
         map.put("skills", skills);
         map.put("growth", growth);
+        map.put("profile", profile);
 
         return Result.success(map);
     }

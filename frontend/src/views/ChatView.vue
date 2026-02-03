@@ -184,11 +184,13 @@ import {
 import { useMessage, NScrollbar } from 'naive-ui'
 import { getChatHistory, getChatUsers, markAsRead } from '../api/chat'
 import { useChatStore } from '../store/chat'
+import { useUserStore } from '../store/user'
 import moment from 'moment'
 
 const message = useMessage()
 const route = useRoute()
 const chatStore = useChatStore()
+const userStore = useUserStore()
 const userSearch = ref('')
 const users = ref<any[]>([])
 const selectedUser = ref<any>(undefined)
@@ -198,13 +200,12 @@ const currentHistory = ref<any[]>([])
 const scrollbarRef = ref<any>(null)
 
 // Auth
-const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-const currentUserId = userInfo.id
+const currentUserId = computed(() => userStore.userInfo?.id)
 
 const filteredUsers = computed(() => {
   const search = userSearch.value.toLowerCase()
   return users.value.filter(u => 
-    u.id !== currentUserId && 
+    u.id !== currentUserId.value && 
     (
       (u.nickName && u.nickName.toLowerCase().includes(search)) || 
       (u.fullName && u.fullName.toLowerCase().includes(search)) || 
@@ -266,7 +267,7 @@ const sendMessage = () => {
   
   // Optimistic update
   currentHistory.value.push({
-    fromUserId: currentUserId,
+    fromUserId: currentUserId.value,
     toUserId: toId,
     content: inputValue.value,
     createTime: new Date(),
@@ -286,7 +287,7 @@ watch(() => chatStore.messages, (newMsgs) => {
         const isActive = (isPublic && selectedUser.value === null) || 
                        (!isPublic && selectedUser.value?.id === fromId)
         
-        if (isActive && fromId !== currentUserId) {
+        if (isActive && fromId !== currentUserId.value) {
             currentHistory.value.push(msg)
             scrollToBottom()
             if (!isPublic) markAsRead(fromId)
@@ -312,7 +313,7 @@ const getLastMsgPreview = (id: number | null) => {
 const getNickByMsg = (msg: any) => msg.fromUserNick || '同事'
 const getAvatarByMsg = (msg: any) => msg.fromUserAvatar
 const shouldShowNick = (msg: any, index: number) => {
-    if (msg.fromUserId === currentUserId) return false
+    if (msg.fromUserId === currentUserId.value) return false
     if (index === 0) return true
     return currentHistory.value[index - 1].fromUserId !== msg.fromUserId
 }
@@ -324,8 +325,8 @@ const focusSearch = () => {
 onMounted(() => {
   loadUsers()
   // 只有在用户ID有效时才初始化 WebSocket
-  if (currentUserId && typeof currentUserId === 'number') {
-    chatStore.initWebSocket(currentUserId)
+  if (currentUserId.value && typeof currentUserId.value === 'number') {
+    chatStore.initWebSocket(currentUserId.value)
   } else {
     console.warn('Cannot initialize WebSocket: Invalid user ID')
   }

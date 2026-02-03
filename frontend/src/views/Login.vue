@@ -49,6 +49,28 @@
         </n-button>
       </n-form>
 
+      <!-- MFA Modal -->
+      <n-modal v-model:show="showMfaModal" preset="card" title="二次验证 (MFA)" style="width: 400px" class="glass-popover">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <n-text depth="3">您的账号已开启两步验证，请输入身份验证器中的 6 位动态验证码。</n-text>
+        </div>
+        <n-form-item label="身份验证码">
+            <n-input
+                v-model:value="mfaCode"
+                placeholder="000000"
+                size="large"
+                autofocus
+                @keyup.enter="handleMfaSubmit"
+                style="text-align: center; letter-spacing: 4px; font-weight: 800; font-size: 20px;"
+            />
+        </n-form-item>
+        <template #footer>
+            <n-button type="primary" block size="large" :loading="mfaLoading" @click="handleMfaSubmit">
+                验证并登录
+            </n-button>
+        </template>
+      </n-modal>
+
       <div class="login-footer">
         © 2026 Cloud Workshop · Next Gen EMS
       </div>
@@ -61,12 +83,20 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { PersonOutline, LockClosedOutline } from '@vicons/ionicons5'
-import { login } from '../api/auth'
+import { login, mfaLogin } from '../api/auth'
 import { useUserStore } from '../store/user'
+import { NModal, NText } from 'naive-ui'
 
 const router = useRouter()
 const message = useMessage()
 const loading = ref(false)
+const userStore = useUserStore()
+
+// MFA state
+const showMfaModal = ref(false)
+const mfaCode = ref('')
+const mfaLoading = ref(false)
+const currentUserId = ref<number | null>(null)
 
 const loginModel = reactive({
   username: '',
@@ -80,9 +110,15 @@ const rules = {
 
 const handleLogin = async () => {
   loading.value = true
-  const userStore = useUserStore()
   try {
     const res: any = await login(loginModel)
+    
+    if (res.mfaRequired) {
+        currentUserId.value = res.userId
+        showMfaModal.value = true
+        return
+    }
+
     // Save token to store and storage
     userStore.setToken(res.token)
     message.success('登录成功，欢迎回来')
@@ -92,6 +128,28 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleMfaSubmit = async () => {
+    if (!mfaCode.value || mfaCode.value.length !== 6) {
+        message.warning('请输入 6 位动态验证码')
+        return
+    }
+    mfaLoading.value = true
+    try {
+        const res: any = await mfaLogin({
+            userId: currentUserId.value!,
+            code: mfaCode.value
+        })
+        userStore.setToken(res.token)
+        message.success('两步验证通过，欢迎回来')
+        showMfaModal.value = false
+        router.push('/dashboard')
+    } catch (e: any) {
+        // Error handled by interceptor
+    } finally {
+        mfaLoading.value = false
+    }
 }
 </script>
 

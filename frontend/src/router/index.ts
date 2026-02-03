@@ -112,6 +112,11 @@ const routes: any[] = [
         path: 'chat',
         name: 'Chat',
         component: () => import('../views/ChatView.vue')
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('../views/ProfileView.vue')
       }
     ]
   },
