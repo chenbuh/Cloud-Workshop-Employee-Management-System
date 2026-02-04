@@ -158,4 +158,30 @@ public class DashboardController {
         public Result<List<Map<String, Object>>> getDeptDistribution() {
                 return Result.success(empProfileService.getDeptStats());
         }
+
+        @Autowired
+        private ISysAttendanceService sysAttendanceService;
+
+        @GetMapping("/personal")
+        public Result<Map<String, Object>> getPersonalData() {
+                Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
+                Map<String, Object> data = new HashMap<>();
+
+                // 1. 今日打卡
+                data.put("todayAttendance", sysAttendanceService.getTodayRecord(userId));
+
+                // 2. 待我处理的审批 (如果我是领导)
+                // 简化逻辑：如果是admin或有特定权限的用户，返回待审批总数
+                data.put("pendingApprovals",
+                                sysLeaveService.count(new LambdaQueryWrapper<SysLeave>().eq(SysLeave::getStatus, 0)));
+
+                // 3. 我的最新工资单
+                data.put("latestPayroll",
+                                sysPayrollService.getOne(new LambdaQueryWrapper<com.cloud.employee.entity.SysPayroll>()
+                                                .eq(com.cloud.employee.entity.SysPayroll::getUserId, userId)
+                                                .orderByDesc(com.cloud.employee.entity.SysPayroll::getPayrollMonth)
+                                                .last("LIMIT 1")));
+
+                return Result.success(data);
+        }
 }

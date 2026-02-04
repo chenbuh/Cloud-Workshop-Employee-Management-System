@@ -60,7 +60,17 @@ public class PayrollController {
                     "您 " + payroll.getPayrollMonth() + " 月份的工资已发放，请注意查收。",
                     "success");
         }
+
         return Result.success(success);
+    }
+
+    @PostMapping("/batch-send")
+    @SaCheckPermission("system:payroll:edit")
+    public Result<Boolean> batchSendSlips(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty())
+            return Result.error("请选择要发放的记录");
+        sysPayrollService.batchSendSalarySlips(ids);
+        return Result.success(true);
     }
 
     @GetMapping("/export")

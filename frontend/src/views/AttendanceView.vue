@@ -55,14 +55,36 @@
       <!-- 右侧：考勤历史 -->
       <div class="glass-effect history-card">
         <div class="card-header">
-          <h3>考勤月历</h3>
+          <h3>考勤统计与记录</h3>
+          <n-radio-group v-model:value="viewMode" size="small">
+            <n-radio-button value="calendar">日历视图</n-radio-button>
+            <n-radio-button value="list">列表视图</n-radio-button>
+          </n-radio-group>
         </div>
-        <n-data-table
-          :columns="columns"
-          :data="historyData"
-          :pagination="pagination"
-          class="glass-table"
-        />
+
+        <div v-if="viewMode === 'list'" class="fade-in">
+            <n-data-table
+            :columns="columns"
+            :data="historyData"
+            :pagination="pagination"
+            class="glass-table"
+            />
+        </div>
+        
+        <div v-else class="calendar-wrapper fade-in">
+            <n-calendar #default="{ year, month, date }" class="custom-calendar">
+                <div class="calendar-cell-content">
+                    <template v-if="getAttendanceForDate(year, month, date)">
+                        <div class="status-indicator" :class="getStatusClass(getAttendanceForDate(year, month, date).status)">
+                            {{ getStatusText(getAttendanceForDate(year, month, date).status) }}
+                        </div>
+                        <div class="time-hint" v-if="getAttendanceForDate(year, month, date).clockInTime">
+                            {{ formatShortTime(getAttendanceForDate(year, month, date).clockInTime) }}
+                        </div>
+                    </template>
+                </div>
+            </n-calendar>
+        </div>
       </div>
     </div>
   </div>
@@ -70,7 +92,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, reactive, h } from 'vue'
-import { NButton, NTag, NDataTable, useMessage } from 'naive-ui'
+import { NButton, NTag, NDataTable, NCalendar, NRadioGroup, NRadioButton, useMessage } from 'naive-ui'
 import { clockIn, clockOut, getTodayAttendance, getAttendanceList } from '../api/attendance'
 import moment from 'moment'
 
@@ -79,7 +101,8 @@ const loading = ref(false)
 const currentTime = ref(moment().format('HH:mm:ss'))
 const currentDate = ref(moment().format('LL dddd'))
 const todayRecord = ref<any>(null)
-const historyData = ref([])
+const historyData = ref<any[]>([])
+const viewMode = ref<'calendar' | 'list'>('calendar')
 
 let timer: any = null
 
@@ -121,12 +144,31 @@ const loadHistory = async () => {
   try {
     const res: any = await getAttendanceList({
       pageNum: pagination.page,
-      pageSize: pagination.pageSize
+      pageSize: viewMode.value === 'list' ? pagination.pageSize : 50 // Get more for calendar
     })
     historyData.value = res.records
     pagination.itemCount = res.total
   } catch (e) {}
 }
+
+const getAttendanceForDate = (y: number, m: number, d: number) => {
+    return historyData.value.find(item => {
+        const date = moment(item.workDate)
+        return date.year() === y && (date.month() + 1) === m && date.date() === d
+    })
+}
+
+const getStatusClass = (status: number) => {
+    const map: any = { 1: 'success', 2: 'warning', 3: 'warning', 4: 'error' }
+    return map[status] || 'default'
+}
+
+const getStatusText = (status: number) => {
+    const map: any = { 1: '正常', 2: '迟到', 3: '早退', 4: '异常' }
+    return map[status] || '未知'
+}
+
+const formatShortTime = (time: any) => moment(time).format('HH:mm')
 
 const handleClockIn = async () => {
   loading.value = true
@@ -239,8 +281,54 @@ onUnmounted(() => {
 }
 
 .history-card h3 {
-  margin: 0 0 20px 0;
+  margin: 0;
   font-size: 20px;
   font-weight: 700;
+}
+
+.calendar-wrapper {
+    height: 600px;
+}
+
+.custom-calendar {
+    --n-border-color: transparent !important;
+}
+
+:deep(.n-calendar .n-calendar-dates .n-calendar-date) {
+    padding: 8px !important;
+}
+
+.calendar-cell-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 100%;
+}
+
+.status-indicator {
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    text-align: center;
+    color: white;
+}
+.status-indicator.success { background: #10b981; }
+.status-indicator.warning { background: #f59e0b; }
+.status-indicator.error { background: #ef4444; }
+.status-indicator.default { background: #94a3b8; }
+
+.time-hint {
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>

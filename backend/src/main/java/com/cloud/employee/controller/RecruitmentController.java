@@ -20,6 +20,45 @@ import java.util.List;
 @RequestMapping("/api/v1/recruitment")
 public class RecruitmentController {
 
+    @PostMapping("/candidate/parse")
+    public Result<java.util.Map<String, Object>> parseResume(@RequestBody java.util.Map<String, String> params) {
+        String text = params.get("text");
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+
+        if (text == null || text.isEmpty())
+            return Result.error("内容不能为空");
+
+        // Simple Regex Extraction Mock
+        // Name (Usually at the beginning) - very simplified
+        java.util.regex.Matcher nameMatcher = java.util.regex.Pattern.compile("(姓名[:：\\s]*)([^\\s\\n]{2,4})")
+                .matcher(text);
+        result.put("name", nameMatcher.find() ? nameMatcher.group(2) : "");
+
+        // Phone
+        java.util.regex.Matcher phoneMatcher = java.util.regex.Pattern.compile("(1[3-9]\\d{9})").matcher(text);
+        result.put("phone", phoneMatcher.find() ? phoneMatcher.group(1) : "");
+
+        // Email
+        java.util.regex.Matcher emailMatcher = java.util.regex.Pattern
+                .compile("([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6})").matcher(text);
+        result.put("email", emailMatcher.find() ? emailMatcher.group(1) : "");
+
+        // Education (Common keywords)
+        String[] edus = { "本科", "硕士", "博士", "大专" };
+        for (String e : edus) {
+            if (text.contains(e)) {
+                result.put("education", e);
+                break;
+            }
+        }
+
+        // Experience Years
+        java.util.regex.Matcher expMatcher = java.util.regex.Pattern.compile("(\\d+)(年工作经验|年经验)").matcher(text);
+        result.put("experienceYears", expMatcher.find() ? Integer.parseInt(expMatcher.group(1)) : 1);
+
+        return Result.success(result);
+    }
+
     @Autowired
     private IRecJobService jobService;
 
@@ -69,6 +108,12 @@ public class RecruitmentController {
         existing.setUpdateTime(new Date());
         candidateService.updateById(existing);
         return Result.success(true);
+    }
+
+    @PutMapping("/candidates")
+    public Result<Boolean> updateCandidate(@RequestBody RecCandidate candidate) {
+        candidate.setUpdateTime(new Date());
+        return Result.success(candidateService.updateById(candidate));
     }
 
     // --- Interview Management ---

@@ -23,6 +23,14 @@ export function issuePayroll(id: number) {
     })
 }
 
+export function batchSendPayroll(ids: number[]) {
+    return request({
+        url: '/payroll/batch-send',
+        method: 'post',
+        data: ids
+    })
+}
+
 export function exportPayroll(month: string) {
     return request({
         url: '/payroll/export',

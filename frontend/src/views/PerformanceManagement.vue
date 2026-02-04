@@ -42,10 +42,13 @@
     </n-grid>
 
     <div class="glass-effect detail-card">
-      <div class="card-title">评价明细</div>
+      <div class="card-header-flex">
+        <div class="card-title">评价明细 {{ filterBoxName ? `(${filterBoxName})` : '' }}</div>
+        <n-button v-if="filterBoxName" size="tiny" secondary type="error" @click="clearFilter">清除筛选</n-button>
+      </div>
       <n-data-table
         :columns="detailColumns"
-        :data="appraisalData"
+        :data="filteredAppraisalData"
         :loading="loading"
       />
     </div>
@@ -137,8 +140,11 @@ const loading = ref(false)
 const submitting = ref(false)
 const selectedCycle = ref<number | null>(null)
 const cycleOptions = ref([])
-const appraisalData = ref([])
+const appraisalData = ref<any[]>([])
 const employeeList = ref([])
+const filterBoxName = ref('')
+const filteredGrid = ref<[number, number] | null>(null)
+
 const nineBoxRef = ref<HTMLElement | null>(null)
 let nineBoxChart: echarts.ECharts | null = null
 
@@ -180,6 +186,35 @@ const rankingColumns = [
     { title: '得分', key: 'score' },
     { title: '评级', key: 'rating', render: (row: any) => h(NTag, { type: row.rating === 'A' || row.rating === 'S' ? 'success' : 'info' }, { default: () => row.rating }) }
 ]
+
+const filteredAppraisalData = computed(() => {
+    if (!filteredGrid.value) return appraisalData.value
+    return appraisalData.value.filter(item => {
+        let perfLevel = 1
+        if (item.score >= 85) perfLevel = 3
+        else if (item.score >= 70) perfLevel = 2
+        
+        let potLevel = 1
+        if (item.potentialScore >= 4) potLevel = 3
+        else if (item.potentialScore >= 3) potLevel = 2
+
+        return perfLevel === filteredGrid.value![0] && potLevel === filteredGrid.value![1]
+    })
+})
+
+const getBoxName = (perf: number, pot: number) => {
+    const names = [
+        ['淘汰区', '潜力股', '未来之星'],
+        ['核心基石', '中坚力量', '高潜人才'],
+        ['熟练老兵', '优秀员工', '超级明星']
+    ]
+    return names[perf-1][pot-1]
+}
+
+const clearFilter = () => {
+    filteredGrid.value = null
+    filterBoxName.value = ''
+}
 
 const detailColumns = [
     { title: '员工', key: 'empName' },
@@ -366,6 +401,35 @@ const handleSubmitAppraisal = async () => {
     }
 
     nineBoxChart.setOption(option)
+
+    // Add click event for filtering
+    nineBoxChart.off('click')
+    nineBoxChart.on('click', (params: any) => {
+        if (params.componentType === 'series') {
+            // Clicked on a point
+            const perfLevel = Math.ceil(params.data.value[0])
+            const potLevel = Math.ceil(params.data.value[1])
+            filteredGrid.value = [perfLevel, potLevel]
+            filterBoxName.value = getBoxName(perfLevel, potLevel)
+        }
+    })
+
+    // Click on empty area (markArea) via zrender
+    nineBoxChart.getZr().on('click', (params: any) => {
+        if (!params.target) {
+            // Clicked on background, try to figure out coordinate
+            const pointInPixel = [params.offsetX, params.offsetY]
+            const pointInGrid = nineBoxChart!.convertFromPixel('grid', pointInPixel)
+            if (pointInGrid) {
+                const perfLevel = Math.ceil(pointInGrid[0])
+                const potLevel = Math.ceil(pointInGrid[1])
+                if (perfLevel >= 1 && perfLevel <= 3 && potLevel >= 1 && potLevel <= 3) {
+                    filteredGrid.value = [perfLevel, potLevel]
+                    filterBoxName.value = getBoxName(perfLevel, potLevel)
+                }
+            }
+        }
+    })
 }
 
 onMounted(() => {
@@ -397,5 +461,14 @@ onMounted(() => {
   font-weight: 700;
   margin-bottom: 16px;
   color: #1e293b;
+}
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.card-header-flex .card-title {
+    margin-bottom: 0;
 }
 </style>

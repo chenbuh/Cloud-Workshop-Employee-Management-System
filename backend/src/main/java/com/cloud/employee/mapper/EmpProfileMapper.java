@@ -13,6 +13,7 @@ import org.apache.ibatis.annotations.Param;
 
 public interface EmpProfileMapper extends BaseMapper<EmpProfile> {
 
+        @Select("SELECT d.dept_name, COUNT(e.id) as count FROM sys_dept d LEFT JOIN emp_profile e ON d.id = e.dept_id AND e.status != 3 GROUP BY d.dept_name HAVING count > 0")
         List<Map<String, Object>> countByDept();
 
         @Select("SELECT dept_id as deptId, COUNT(*) as count FROM emp_profile WHERE status != 3 GROUP BY dept_id")

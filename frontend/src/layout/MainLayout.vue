@@ -11,37 +11,41 @@
       @expand="collapsed = false"
       class="glass-sider"
     >
-      <div class="logo">
-        <img src="/logo.png" alt="Logo" class="logo-sidebar" />
-        <span v-if="!collapsed" class="logo-text">Cloud Workshop</span>
-      </div>
-      
-      <n-menu
-        :collapsed="collapsed"
-        :collapsed-width="64"
-        :collapsed-icon-size="22"
-        :options="menuOptions"
-        :value="activeKey"
-        @update:value="handleMenuUpdate"
-        class="glass-menu"
-      />
-
-      <div class="user-profile" v-if="!collapsed" @click="router.push('/profile')" style="cursor: pointer">
-        <div class="user-avatar">
-          <n-avatar round size="small" :src="userStore.userInfo?.avatar" :fallback-src="`https://api.dicebear.com/7.x/avataaars/svg?seed=${userStore.userInfo?.nickName || 'User'}`" />
+      <div class="sider-wrapper">
+        <div class="logo">
+          <img src="/logo.png" alt="Logo" class="logo-sidebar" />
+          <span v-if="!collapsed" class="logo-text">Cloud Workshop</span>
         </div>
-        <div class="user-info">
-          <div class="user-name">{{ userStore.userInfo?.nickName || '加载中...' }}</div>
-          <div class="user-role">{{ userStore.userInfo?.userType === '00' ? '超级管理员' : '系统用户' }}</div>
+        
+        <n-scrollbar class="sider-scroll">
+          <n-menu
+            :collapsed="collapsed"
+            :collapsed-width="64"
+            :collapsed-icon-size="22"
+            :options="menuOptions"
+            :value="activeKey"
+            @update:value="handleMenuUpdate"
+            class="glass-menu"
+          />
+        </n-scrollbar>
+  
+        <div class="user-profile" v-if="!collapsed" @click="router.push('/profile')" style="cursor: pointer">
+          <div class="user-avatar">
+            <n-avatar round size="small" :src="userStore.userInfo?.avatar" :fallback-src="`https://api.dicebear.com/7.x/avataaars/svg?seed=${userStore.userInfo?.nickName || 'User'}`" />
+          </div>
+          <div class="user-info">
+            <div class="user-name">{{ userStore.userInfo?.nickName || '加载中...' }}</div>
+            <div class="user-role">{{ userStore.userInfo?.userType === '00' ? '超级管理员' : '系统用户' }}</div>
+          </div>
+          <n-space :size="4">
+            <n-button quaternary circle size="small" @click.stop="router.push('/profile')">
+               <template #icon><n-icon :component="PersonCircleOutline" /></template>
+            </n-button>
+            <n-button quaternary circle size="small" @click.stop="handleLogout">
+               <template #icon><n-icon :component="LogOutOutline" /></template>
+            </n-button>
+          </n-space>
         </div>
-        <n-space :size="4">
-          <n-button quaternary circle size="small" @click.stop="router.push('/profile')">
-             <template #icon><n-icon :component="PersonCircleOutline" /></template>
-          </n-button>
-          <n-button quaternary circle size="small" @click.stop="handleLogout">
-             <template #icon><n-icon :component="LogOutOutline" /></template>
-          </n-button>
-        </n-space>
       </div>
     </n-layout-sider>
     
@@ -67,6 +71,35 @@
              </n-auto-complete>
            </div>
            
+            <n-button quaternary circle @click="appStore.setTheme(appStore.theme === 'dark' ? 'light' : 'dark')">
+               <template #icon>
+                 <n-icon :component="appStore.theme === 'dark' ? SunnyOutline : MoonOutline" />
+               </template>
+            </n-button>
+
+            <n-popover trigger="click" placement="bottom-end" class="glass-popover">
+                <template #trigger>
+                    <n-button quaternary circle>
+                        <template #icon><n-icon :component="ColorPaletteOutline" /></template>
+                    </n-button>
+                </template>
+                <div class="skin-panel">
+                    <div class="panel-header">选择皮肤</div>
+                    <div class="skin-grid">
+                        <div 
+                          v-for="(c, key) in skinOptions" 
+                          :key="key" 
+                          class="skin-item" 
+                          :style="{ background: (c as any).color }" 
+                          :class="{ active: appStore.skin === key }"
+                          @click="appStore.setSkin(key as string)"
+                        >
+                            <n-icon v-if="appStore.skin === key" :component="CheckmarkCircleOutline" color="white" />
+                        </div>
+                    </div>
+                </div>
+            </n-popover>
+
            <n-badge :value="unreadCount" :show="unreadCount > 0" pill>
              <n-popover trigger="click" scrollable style="max-height: 400px; width: 320px; padding: 0" class="glass-popover">
                <template #trigger>
@@ -168,18 +201,30 @@ import {
   FlashOutline,
   BookOutline,
   KeyOutline,
-  ChatbubbleEllipsesOutline
+  ChatbubbleEllipsesOutline,
+  CubeOutline,
+  MoonOutline,
+  SunnyOutline,
+  ColorPaletteOutline,
+  BriefcaseOutline,
+  StorefrontOutline,
+  PieChartOutline,
+  LayersOutline,
+  DocumentLockOutline,
+  EarthOutline
 } from '@vicons/ionicons5'
 import { getInfo, logout, updatePassword } from '../api/auth'
 import { getNotificationList, getUnreadCount, readAllNotifications, readNotification } from '../api/notification'
 import { globalSearch } from '../api/search'
 import { useUserStore } from '../store/user'
 import { useChatStore } from '../store/chat'
+import { useAppStore } from '../store/app'
 import InternalChat from '../components/InternalChat.vue'
 import moment from 'moment'
 
 const userStore = useUserStore()
 const chatStore = useChatStore()
+const appStore = useAppStore()
 const router = useRouter()
 const route = useRoute()
 const message = useMessage()
@@ -200,6 +245,13 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 })
+
+const skinOptions: any = {
+    indigo: { color: '#6366f1', label: '靛蓝' },
+    rose: { color: '#f43f5e', label: '蔷薇' },
+    emerald: { color: '#10b981', label: '翡翠' },
+    amber: { color: '#f59e0b', label: '琥珀' }
+}
 
 const handleSearch = (value: string) => {
   searchVal.value = value
@@ -341,6 +393,36 @@ const menuOptions = computed(() => [
     label: '审批管理',
     key: 'approvals',
     icon: renderIcon(DocumentTextOutline)
+  },
+  {
+    label: '资源预约',
+    key: 'resource-booking',
+    icon: renderIcon(CubeOutline)
+  },
+  {
+    label: '物资申领',
+    key: 'asset-management',
+    icon: renderIcon(StorefrontOutline)
+  },
+  {
+    label: '分析看板',
+    key: 'resource-analytics',
+    icon: renderIcon(PieChartOutline)
+  },
+  {
+    label: '流程引导',
+    key: 'workflow',
+    icon: renderIcon(LayersOutline)
+  },
+  {
+    label: '电子合同',
+    key: 'contract',
+    icon: renderIcon(DocumentLockOutline)
+  },
+  {
+    label: '人才库',
+    key: 'recruitment-pool',
+    icon: renderIcon(EarthOutline)
   },
   {
     label: () => h('div', { style: 'display: flex; align-items: center; justify-content: space-between; width: 100%' }, [
@@ -505,8 +587,22 @@ onMounted(async () => {
   backdrop-filter: blur(16px);
 }
 
+
+.sider-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sider-scroll {
+  flex: 1;
+  overflow: hidden;
+}
+
 .logo {
   height: 64px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -528,10 +624,8 @@ onMounted(async () => {
 }
 
 .user-profile {
-  position: absolute;
-  bottom: 24px;
-  left: 12px;
-  right: 12px;
+  flex-shrink: 0;
+  margin: 12px;
   background: rgba(255, 255, 255, 0.5);
   padding: 12px;
   border-radius: 12px;
@@ -691,4 +785,26 @@ onMounted(async () => {
   border-radius: 12px !important;
   box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
 }
+
+.skin-panel {
+    padding: 12px;
+}
+.skin-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+.skin-item {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.skin-item:hover { transform: scale(1.1); }
+.skin-item.active { box-shadow: 0 0 0 3px rgba(0,0,0,0.1); }
 </style>

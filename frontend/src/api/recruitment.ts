@@ -22,19 +22,50 @@ export function getCandidates() {
     })
 }
 
-export function updateCandidateStatus(id: number, status: number) {
+export function deleteCandidate(id: number) {
     return request({
-        url: '/recruitment/candidates/status',
-        method: 'put',
-        data: { id, status }
+        url: `/recruitment/candidates/${id}`,
+        method: 'delete'
     })
 }
 
-export function getInterviews(candidateId?: number) {
+export function parseResume(text: string) {
+    return request({
+        url: '/recruitment/candidate/parse',
+        method: 'post',
+        data: { text }
+    })
+}
+
+export function saveCandidate(data: any) {
+    return request({
+        url: '/recruitment/candidates',
+        method: 'post',
+        data
+    })
+}
+
+export function updateCandidateStatus(data: any) {
+    return request({
+        url: '/recruitment/candidates/status',
+        method: 'put',
+        data
+    })
+}
+
+export function updateCandidate(data: any) {
+    return request({
+        url: '/recruitment/candidates',
+        method: 'put',
+        data
+    })
+}
+
+export function getInterviews(params?: any) {
     return request({
         url: '/recruitment/interviews',
         method: 'get',
-        params: { candidateId }
+        params
     })
 }
 

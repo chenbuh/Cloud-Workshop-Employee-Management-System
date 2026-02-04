@@ -114,6 +114,36 @@ const routes: any[] = [
         component: () => import('../views/ChatView.vue')
       },
       {
+        path: 'resource-booking',
+        name: 'ResourceBooking',
+        component: () => import('../views/ResourceBookingView.vue')
+      },
+      {
+        path: 'asset-management',
+        name: 'AssetManagement',
+        component: () => import('../views/AssetManagementView.vue')
+      },
+      {
+        path: 'resource-analytics',
+        name: 'ResourceAnalytics',
+        component: () => import('../views/ResourceAnalyticsView.vue')
+      },
+      {
+        path: 'workflow',
+        name: 'Workflow',
+        component: () => import('../views/WorkflowView.vue')
+      },
+      {
+        path: 'contract',
+        name: 'Contract',
+        component: () => import('../views/ContractView.vue')
+      },
+      {
+        path: 'recruitment-pool',
+        name: 'RecruitmentPool',
+        component: () => import('../views/RecruitmentPoolView.vue')
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('../views/ProfileView.vue')

@@ -67,6 +67,7 @@
           </div>
         </div>
       </div>
+    </div>
     
     <!-- 日历视图 -->
     <div v-else-if="viewMode === 'calendar'" class="glass-effect" style="flex: 1; padding: 24px; border-radius: 12px; background: white; overflow-y: auto;">
@@ -89,7 +90,6 @@
             :data="jobList"
             :loading="loadingJobs"
          />
-    </div>
     </div>
 
     <!-- 职位发布弹窗 -->
@@ -159,19 +159,25 @@
                             :time="new Date(interview.interviewTime).toLocaleString()"
                         >
                             <n-card size="small" embedded>
-                                <div style="margin-bottom: 8px;">
-                                    <span style="margin-right: 10px;">面试得分: </span>
-                                    <n-rate :value="interview.score / 20" readonly allow-half size="small" />
-                                    <span style="margin-left: 5px; font-weight: bold;">{{ interview.score }}</span>
+                                <div style="margin-bottom: 8px; display: flex; justify-content: space-between;">
+                                    <div>
+                                      <span style="font-weight: bold">{{ getEmployeeName(interview.interviewerId) }}</span>
+                                      <span style="color: #999; margin-left: 8px">面试官</span>
+                                    </div>
+                                    <div>
+                                      <n-rate :value="interview.score / 20" readonly allow-half size="small" />
+                                      <span style="margin-left: 5px; font-weight: bold;">{{ interview.score }}</span>
+                                    </div>
                                 </div>
                                 <div style="color: #666; font-size: 13px;">
                                     {{ interview.comment }}
                                 </div>
                             </n-card>
                         </n-timeline-item>
-                         <n-timeline-item type="info" title="简历初筛" content="HR 初步筛选通过" />
-                    </n-timeline>
-                    <n-empty v-if="interviews.length === 0" description="暂无面试记录" />
+                             <n-timeline-item v-if="currentCandidate?.status >= 2" type="info" title="简历初筛" content="HR 初步筛选通过" />
+                             <n-timeline-item type="success" title="新简历入库" :time="new Date(currentCandidate?.createTime).toLocaleString()" />
+                        </n-timeline>
+                        <n-empty v-if="interviews.length === 0 && currentCandidate?.status < 2" description="暂无面试记录" />
                 </n-scrollbar>
             </div>
         </div>
@@ -180,6 +186,12 @@
     <!-- 添加面试反馈弹窗 -->
     <n-modal v-model:show="interviewForm.show" preset="card" title="面试反馈录入" style="width: 500px">
         <n-form label-placement="left" label-width="80px">
+            <n-form-item label="面试时间">
+                <n-date-picker v-model:value="interviewForm.interviewTime" type="datetime" style="width: 100%" />
+            </n-form-item>
+            <n-form-item label="面试官">
+                <n-select v-model:value="interviewForm.interviewerId" :options="employeeOptions" placeholder="选择面试官" filterable />
+            </n-form-item>
             <n-form-item label="面试轮次">
                 <n-select v-model:value="interviewForm.type" :options="[{label:'初试',value:1},{label:'复试',value:2},{label:'终试',value:3}]" />
             </n-form-item>
@@ -244,11 +256,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, h } from 'vue'
+import { ref, onMounted, reactive, h, computed } from 'vue'
 import { 
   NButton, NIcon, NSpace, NInput, NTag, NAvatar, NModal, NForm, NFormItem, 
   NSelect, NInputNumber, useMessage, NDescriptions, NDescriptionsItem, NScrollbar,
-  NTimeline, NTimelineItem, NCard, NRate, NDivider, NCalendar, NRadioButton, NRadioGroup
+  NTimeline, NTimelineItem, NCard, NRate, NDivider, NCalendar, NRadioButton, NRadioGroup,
+  NDatePicker
 } from 'naive-ui'
 import { 
   AddOutline, SearchOutline, SchoolOutline, BriefcaseOutline, ChevronForwardOutline,
@@ -260,15 +273,23 @@ import {
     getInterviews, addInterview, updateInterview 
 } from '../api/recruitment'
 import { getDeptTree } from '../api/dept'
+import { getEmployeeList } from '../api/employee'
 
 const message = useMessage()
 const showJobModal = ref(false)
 const submitting = ref(false)
 const deptOptions = ref<any[]>([])
+const employeeList = ref<any[]>([])
 
 const viewMode = ref('kanban')
 const calendarValue = ref(Date.now())
 const allInterviews = ref<any[]>([])
+
+const employeeOptions = computed(() => employeeList.value.map(e => ({ label: e.full_name + ' (' + e.emp_code + ')', value: e.id })))
+const getEmployeeName = (id: number) => {
+    const emp = employeeList.value.find(e => e.id === id)
+    return emp ? emp.full_name : 'Unknown'
+}
 
 const jobForm = reactive({
     jobTitle: '',
@@ -283,7 +304,7 @@ const interviews = ref<any[]>([])
 const interviewForm = reactive({
     show: false,
     candidateId: 0,
-    interviewerId: 0, // Should be current user or selected
+    interviewerId: null, 
     interviewTime: Date.now(),
     type: 1,
     linkUrl: '',
@@ -323,12 +344,14 @@ const kanbanColumns = [
 
 const loadData = async () => {
     try {
-        const res: any = await getCandidates()
+        const [res, depts, emps]: any = await Promise.all([
+            getCandidates(),
+            getDeptTree(),
+            getEmployeeList({ pageNum: 1, pageSize: 1000 })
+        ])
         candidates.value = res
-        
-        // Load depts for job modal
-        const depts: any = await getDeptTree()
         deptOptions.value = mapDepts(depts)
+        employeeList.value = emps.records
         
         // Load all interviews for calendar
         loadAllInterviews()
@@ -384,7 +407,7 @@ const onDrop = async (event: DragEvent, status: number) => {
             const oldStatus = candidate.status
             candidate.status = status
             try {
-                await updateCandidateStatus(Number(candidateId), status)
+                await updateCandidateStatus({ id: Number(candidateId), status: status })
                 message.success('状态更新成功')
                 loadAllInterviews() // Refresh calendar potentially if status affects something
             } catch(e) {
@@ -412,7 +435,7 @@ const openCandidateDetail = async (c: Candidate) => {
     showCandidateModal.value = true
     // Load interviews
     try {
-        const res: any = await getInterviews(c.id)
+        const res: any = await getInterviews({ candidateId: c.id })
         interviews.value = res
     } catch(e) {
         interviews.value = []
@@ -513,6 +536,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
 }
+
 .header-section {
   display: flex;
   justify-content: space-between;
@@ -523,109 +547,167 @@ onMounted(() => {
     margin: 0;
     font-size: 24px;
     font-weight: 700;
+    color: var(--text-primary);
 }
 .subtitle {
     margin: 4px 0 0;
-    color: #64748b;
+    color: var(--text-secondary);
     font-size: 14px;
 }
+
+/* Kanban Board Styling */
 .kanban-board {
     flex: 1;
     display: flex;
-    gap: 20px;
+    gap: 24px;
     overflow-x: auto;
-    padding-bottom: 20px;
+    padding-bottom: 12px;
+    scroll-behavior: smooth;
 }
+.kanban-board::-webkit-scrollbar {
+    height: 8px;
+}
+.kanban-board::-webkit-scrollbar-track {
+    background: transparent;
+}
+.kanban-board::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+.kanban-board::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
 .kanban-column {
-    flex: 0 0 280px;
-    background: rgba(255, 255, 255, 0.5);
-    backdrop-filter: blur(10px);
+    flex: 0 0 300px;
+    background: #f8fafc; /* Lighter background */
     border-radius: 12px;
     display: flex;
     flex-direction: column;
     height: 100%;
+    border: 1px solid #e2e8f0;
+    transition: background-color 0.2s;
 }
+.kanban-column:hover {
+    background: #f1f5f9;
+}
+
 .column-header {
     padding: 16px;
-    font-weight: 600;
-    border-top: 4px solid #ccc;
+    font-weight: 700;
+    font-size: 14px;
+    color: #334155;
+    border-top: 3px solid transparent; /* Dynamic color applied via style */
+    border-bottom: 1px solid #e2e8f0;
     border-radius: 12px 12px 0 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.4);
+    background: white;
 }
+
 .column-count {
-    background: rgba(0,0,0,0.05);
-    padding: 2px 8px;
-    border-radius: 10px;
+    background: #e2e8f0;
+    color: #64748b;
+    padding: 2px 10px;
+    border-radius: 12px;
     font-size: 12px;
+    font-weight: 600;
 }
+
 .column-content {
     flex: 1;
     padding: 12px;
     overflow-y: auto;
 }
+.column-content::-webkit-scrollbar {
+    width: 6px;
+}
+.column-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+/* Card Styling */
 .candidate-card {
     background: white;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 16px;
+    border-radius: 10px;
     margin-bottom: 12px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f1f5f9;
     cursor: grab;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
 }
 .candidate-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-color: #e2e8f0;
+    z-index: 10;
 }
+.candidate-card:active {
+    cursor: grabbing;
+}
+
+/* Use a pseudo-element for a subtle left accent based on column priority if needed, 
+   or just keep it clean. Current design uses tags. */
+
 .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+    align-items: flex-start;
+    margin-bottom: 10px;
 }
 .name {
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 15px;
     color: #1e293b;
 }
+
 .card-info {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     font-size: 12px;
     color: #64748b;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 .info-item {
     display: flex;
     align-items: center;
     gap: 4px;
+    background: #f8fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
+
 .card-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding-top: 12px;
+    border-top: 1px dashed #f1f5f9;
 }
-.calendar-event {
-    margin-bottom: 4px;
-}
-.jobs-list-view {
+
+/* Other Views */
+.jobs-list-view, .calendar-view {
     flex: 1;
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(10px);
+    background: white; 
     border-radius: 12px;
     padding: 24px;
     overflow-y: auto;
+    border: 1px solid #e2e8f0;
 }
 
-/* Poster Styles */
+/* Poster Styles (Keep mostly same but refine) */
 .poster-card {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
     border-radius: 20px;
     padding: 30px;
     color: #1e293b;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1;);
     position: relative;
     overflow: hidden;
     min-height: 500px;
@@ -634,67 +716,71 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
 }
 .brand {
     display: flex;
     align-items: center;
     gap: 10px;
 }
-.brand img { width: 30px; height: 30px; }
-.brand span { font-weight: 800; font-size: 16px; color: #6366f1; }
+.brand img { width: 32px; height: 32px; }
+.brand span { font-weight: 800; font-size: 18px; color: #4f46e5; }
 .hiring-tag {
-    background: #6366f1;
+    background: #4f46e5;
     color: white;
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 100px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 1px;
+    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3);
 }
 .job-title {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 900;
-    margin-bottom: 12px;
+    line-height: 1.2;
+    margin-bottom: 16px;
     color: #0f172a;
 }
 .job-meta {
     display: flex;
-    gap: 10px;
-    margin-bottom: 30px;
+    gap: 8px;
+    margin-bottom: 24px;
 }
 .job-desc {
     color: #475569;
     line-height: 1.6;
     font-size: 14px;
     margin-bottom: 30px;
+    white-space: pre-line;
 }
 .apply-footer {
     display: flex;
     justify-content: center;
-    margin-top: 40px;
+    margin-top: auto;
+    padding-bottom: 40px;
 }
 .qr-placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 16px;
-    background: rgba(255,255,255,0.4);
-    border-radius: 12px;
-    border: 1px dashed #6366f1;
+    gap: 10px;
+    padding: 20px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
 }
-.qr-placeholder span { font-size: 12px; color: #6366f1; font-weight: 600; }
+.qr-placeholder span { font-size: 12px; color: #4f46e5; font-weight: 700; }
 .poster-footer {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    background: #1e293b;
+    background: #0f172a;
     color: white;
-    padding: 15px;
+    padding: 12px;
     text-align: center;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
 }
 </style>

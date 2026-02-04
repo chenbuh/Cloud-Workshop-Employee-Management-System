@@ -28,19 +28,7 @@
           <n-select v-model:value="formValue.type" :options="typeOptions" />
         </n-form-item>
         <n-form-item label="正文内容">
-          <n-tabs type="segment" animated>
-            <n-tab-pane name="edit" tab="编辑">
-              <n-input 
-                v-model:value="formValue.content" 
-                type="textarea" 
-                placeholder="支持 Markdown 语法" 
-                :rows="12" 
-              />
-            </n-tab-pane>
-            <n-tab-pane name="preview" tab="预览">
-              <div class="markdown-body announcement-preview" v-html="renderMarkdown(formValue.content)"></div>
-            </n-tab-pane>
-          </n-tabs>
+          <rich-editor v-model="formValue.content" style="width: 100%" />
         </n-form-item>
         <n-form-item label="状态" path="isPublished">
           <n-switch v-model:value="formValue.isPublished" :checked-value="1" :unchecked-value="0">
@@ -67,11 +55,8 @@ import {
 } from 'naive-ui'
 import { Add, CreateOutline, TrashOutline, MegaphoneOutline } from '@vicons/ionicons5'
 import { getAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement, publishAnnouncement } from '../../api/announcement'
+import RichEditor from '../../components/RichEditor.vue'
 import moment from 'moment'
-import MarkdownIt from 'markdown-it'
-
-const md = new MarkdownIt()
-const renderMarkdown = (content: string) => md.render(content || '')
 
 const message = useMessage()
 const dialog = useDialog()
@@ -260,7 +245,7 @@ onMounted(() => {
 .title {
   font-size: 20px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .content-table {
@@ -271,23 +256,8 @@ onMounted(() => {
 
 .glass-effect {
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-}
-
-.announcement-preview {
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 8px;
-  min-height: 200px;
-  max-height: 400px;
-  overflow-y: auto;
-  border: 1px solid #e2e8f0;
-}
-
-.markdown-body :deep(h1), .markdown-body :deep(h2) {
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 8px;
-    margin-bottom: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--card-shadow);
 }
 </style>
