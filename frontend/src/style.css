@@ -9,6 +9,16 @@
   --neon-glow: 0 0 10px rgba(99, 102, 241, 0.5);
 }
 
+/* 深色模式变量 */
+html.dark {
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
 body {
   margin: 0;
   padding: 0;

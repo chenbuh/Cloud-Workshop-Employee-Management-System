@@ -25,6 +25,53 @@
       </div>
     </div>
 
+    <!-- 个人工作空间 (My Workspace) -->
+    <div class="personal-workspace glass-effect">
+      <div class="workspace-header">
+        <div class="title-group">
+            <n-icon :component="BriefcaseOutline" />
+            <h3>个人工作空间</h3>
+        </div>
+        <n-button text type="primary" size="small" @click="$router.push('/profile')">查看档案</n-button>
+      </div>
+      <div class="workspace-grid">
+        <div class="workspace-item" @click="$router.push('/attendance')">
+            <div class="item-label">今日考勤</div>
+            <div class="item-value">
+                <n-tag :type="personalData.todayAttendance?.clockInTime ? 'success' : 'default'" round size="small">
+                    {{ personalData.todayAttendance?.clockInTime ? '已签到' : '未签到' }}
+                </n-tag>
+            </div>
+            <div class="item-desc" v-if="personalData.todayAttendance?.clockInTime">
+                {{ moment(personalData.todayAttendance.clockInTime).format('HH:mm') }} 已打卡
+            </div>
+            <div class="item-desc" v-else>记得准时签到哦</div>
+        </div>
+        <div class="workspace-item" @click="$router.push('/approvals')">
+            <div class="item-label">待办审批</div>
+            <div class="item-value">
+                <span class="count-badge" v-if="personalData.pendingApprovals > 0">{{ personalData.pendingApprovals }}</span>
+                <span v-else class="count-none">全部处理完成</span>
+            </div>
+            <div class="item-desc">个审批申请待处理</div>
+        </div>
+        <div class="workspace-item" @click="$router.push('/salary/payroll')">
+            <div class="item-label">我的工资单</div>
+            <div class="item-value price">
+                ¥ {{ (personalData.latestPayroll?.actualAmount || 0).toLocaleString() }}
+            </div>
+            <div class="item-desc">{{ personalData.latestPayroll?.payrollMonth || '暂无记录' }} 实发金额</div>
+        </div>
+        <div class="workspace-item" @click="$router.push('/performance')">
+            <div class="item-label">当前绩效</div>
+            <div class="item-value">
+                <n-tag type="info" round size="small">年度 S 级期望</n-tag>
+            </div>
+            <div class="item-desc">距离下个考核期还剩 25 天</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 图表区域 -->
     <div class="charts-section">
       <div class="chart-card glass-effect wide">
@@ -96,7 +143,7 @@
     </div>
 
     <n-modal v-model:show="showNewsModal" preset="card" :title="selectedNews?.title" style="width: 700px" class="glass-modal">
-        <div class="markdown-body news-reader" v-html="renderMarkdown(selectedNews?.content || '')"></div>
+        <div class="news-content-body news-reader" v-html="selectedNews?.content || ''"></div>
         <template #footer>
             <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px;">
                 <span>发布类型: {{ selectedNews?.type }}</span>
@@ -108,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, markRaw } from 'vue'
+import { ref, onMounted, markRaw, reactive } from 'vue'
 import { NButton, NIcon, NNumberAnimation, NTag, NAvatar, NSelect } from 'naive-ui'
 import { 
   PeopleOutline, 
@@ -123,15 +170,13 @@ import {
   CashOutline
 } from '@vicons/ionicons5'
 import * as echarts from 'echarts'
-import { getDashboardStats, getGrowthTrend, getDeptDistribution, getNews, getUpcomingBirthdays } from '../api/dashboard'
+import { getDashboardStats, getGrowthTrend, getDeptDistribution, getNews, getUpcomingBirthdays, getPersonalDashboard } from '../api/dashboard'
 import { useUserStore } from '../store/user'
+import { useAppStore } from '../store/app'
 import moment from 'moment'
-import MarkdownIt from 'markdown-it'
-
-const md = new MarkdownIt()
-const renderMarkdown = (content: string) => md.render(content)
 
 const userStore = useUserStore()
+const appStore = useAppStore()
 const currentDate = moment().format('LL dddd')
 
 const getGreeting = () => {
@@ -159,6 +204,11 @@ const birthdayList = ref<any[]>([])
 
 const showNewsModal = ref(false)
 const selectedNews = ref<any>(null)
+const personalData = reactive({
+    todayAttendance: null as any,
+    pendingApprovals: 0,
+    latestPayroll: null as any
+})
 
 const loadStats = async () => {
     const res: any = await getDashboardStats()
@@ -174,6 +224,11 @@ const loadNews = async () => {
 
 const loadBirthdays = async () => {
     birthdayList.value = await getUpcomingBirthdays() as any
+}
+
+const loadPersonal = async () => {
+    const res: any = await getPersonalDashboard()
+    Object.assign(personalData, res)
 }
 
 const getNewsType = (type: string) => {
@@ -206,7 +261,7 @@ const handleTrendChange = async (val: number) => {
     
     lineChartInstance.showLoading({
         text: '加载中...',
-        color: '#6366f1'
+        color: appStore.skinColors[appStore.skin]
     })
     
     try {
@@ -243,11 +298,11 @@ const initLineChart = async () => {
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      itemStyle: { color: '#6366f1' },
+      itemStyle: { color: appStore.skinColors[appStore.skin] },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(99, 102, 241, 0.5)' },
-          { offset: 1, color: 'rgba(99, 102, 241, 0.0)' }
+          { offset: 0, color: appStore.skinColors[appStore.skin] + '80' },
+          { offset: 1, color: appStore.skinColors[appStore.skin] + '00' }
         ])
       }
     }]
@@ -290,6 +345,7 @@ onMounted(() => {
   loadStats()
   loadNews()
   loadBirthdays()
+  loadPersonal()
   initLineChart()
   initPieChart()
 })
@@ -306,13 +362,13 @@ onMounted(() => {
 
 .welcome-banner h2 {
   font-size: 28px;
-  color: #1e293b;
+  color: var(--text-primary);
   margin-bottom: 8px;
   font-weight: 700;
 }
 
 .welcome-banner p {
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -326,7 +382,7 @@ onMounted(() => {
 .stat-card {
   padding: 24px;
   border-radius: 20px;
-  background: white;
+  background: var(--glass-bg);
   display: flex;
   align-items: center;
   position: relative;
@@ -342,7 +398,7 @@ onMounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: #f1f5f9; 
+  background: rgba(148, 163, 184, 0.1); 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -356,13 +412,13 @@ onMounted(() => {
 .stat-value {
   font-size: 28px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--text-secondary);
   margin-top: 4px;
 }
 
@@ -379,6 +435,86 @@ onMounted(() => {
 
 .stat-trend.up { color: #10b981; background: rgba(16, 185, 129, 0.1); }
 .stat-trend.down { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+
+.personal-workspace {
+    padding: 24px;
+    border-radius: 24px;
+    margin-bottom: 32px;
+}
+
+.workspace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.workspace-header .title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.workspace-header h3 { margin: 0; }
+
+.workspace-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.workspace-item {
+    background: rgba(148, 163, 184, 0.05);
+    padding: 20px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--glass-border);
+}
+
+.workspace-item:hover {
+    background: white;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    transform: translateY(-2px);
+}
+
+.item-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.item-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.item-value.price {
+    color: #10b981;
+}
+
+.item-desc {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.count-badge {
+    color: #ef4444;
+    font-size: 24px;
+}
+
+.count-none {
+    font-size: 14px;
+    color: #10b981;
+    font-weight: 600;
+}
 
 /* Charts Section */
 .charts-section {
@@ -422,10 +558,10 @@ onMounted(() => {
     gap: 24px;
 }
 
-.quick-actions, .culture-news, .birthday-card {
+.birthday-card {
     padding: 24px;
     border-radius: 24px;
-    background: white;
+    background: var(--glass-bg);
     min-height: 280px;
     display: flex;
     flex-direction: column;
@@ -448,7 +584,7 @@ onMounted(() => {
     align-items: center;
     gap: 12px;
     padding: 8px 0;
-    border-bottom: 1px dashed #e2e8f0;
+    border-bottom: 1px dashed var(--glass-border);
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -463,7 +599,7 @@ onMounted(() => {
 .news-title {
     flex: 1;
     font-size: 14px;
-    color: #334155;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -471,7 +607,7 @@ onMounted(() => {
 
 .news-time {
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--text-secondary);
 }
 
 .user-item {
@@ -495,32 +631,26 @@ onMounted(() => {
     color: #94a3b8;
 }
 
-.glass-effect {
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-}
-
-/* Markdown Styling for News */
-.news-reader {
-    font-size: 15px;
-    line-height: 1.8;
-    color: #334155;
-}
-
-.markdown-body :deep(h1), .markdown-body :deep(h2), .markdown-body :deep(h3) {
-    margin-top: 20px;
-    margin-bottom: 12px;
-    font-weight: 700;
-}
-
-.markdown-body :deep(img) {
+.news-content-body :deep(img) {
     max-width: 100%;
+    border-radius: 8px;
+    margin: 12px 0;
 }
-
+.news-content-body :deep(ul), .news-content-body :deep(ol) {
+    padding-left: 20px;
+    margin-bottom: 12px;
+}
+.news-content-body :deep(p) {
+    margin-bottom: 12px;
+}
+.news-content-body :deep(h1), .news-content-body :deep(h2), .news-content-body :deep(h3) {
+    color: var(--text-primary);
+    margin-top: 16px;
+    margin-bottom: 12px;
+}
 .markdown-body :deep(code) {
     padding: 2px 4px;
-    background-color: #f1f5f9;
+    background-color: var(--glass-bg);
     border-radius: 4px;
     font-family: monospace;
 }

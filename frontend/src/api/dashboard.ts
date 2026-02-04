@@ -36,3 +36,10 @@ export function getUpcomingBirthdays() {
     })
 }
 
+export function getPersonalDashboard() {
+    return request({
+        url: '/dashboard/personal',
+        method: 'get'
+    })
+}
+

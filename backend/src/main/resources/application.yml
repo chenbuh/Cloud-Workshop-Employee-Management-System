@@ -50,3 +50,17 @@ upload:
   path: e:/Project/Cloud Workshop Employee Management System/uploads/
   # Static mapping for web access
   mapping: /api/v1/files/**
+
+# Mail Configuration
+spring:
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: your-email@example.com
+    password: your-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true

@@ -9,4 +9,6 @@ public interface ISysPayrollService extends IService<SysPayroll> {
     void generateMonthlyPayroll(String month);
 
     List<Map<String, Object>> getMonthlyPayroll(String month);
+
+    void batchSendSalarySlips(List<Long> ids);
 }
