@@ -36,6 +36,28 @@
         </div>
       </n-gi>
 
+      <!-- 新增：二级指标 -->
+      <n-gi :span="24">
+         <div class="sub-stats glass-effect">
+            <div class="sub-item">
+                <div class="sub-label">活跃人才占比</div>
+                <div class="sub-value">85.4%</div>
+            </div>
+            <div class="sub-item">
+                <div class="sub-label">平均职级深度</div>
+                <div class="sub-value">4.2级</div>
+            </div>
+            <div class="sub-item">
+                <div class="sub-label">招聘渠道 ROI</div>
+                <div class="sub-value">7.8x</div>
+            </div>
+            <div class="sub-item">
+                <div class="sub-label">人才库储备</div>
+                <div class="sub-value">2,480+</div>
+            </div>
+         </div>
+      </n-gi>
+
       <!-- 图表区域 -->
       <n-gi :span="14">
         <div class="glass-effect chart-card">
@@ -50,10 +72,17 @@
         </div>
       </n-gi>
 
+      <n-gi :span="10">
+        <div class="glass-effect chart-card">
+          <div class="card-title">组织健康度模型 (Health Radar)</div>
+          <div ref="radarRef" style="height: 400px"></div>
+        </div>
+      </n-gi>
+
       <n-gi :span="24">
         <div class="glass-effect detail-card">
-          <div class="card-title">部门人效热力图明细</div>
-          <n-data-table :columns="columns" :data="tableData" />
+          <div class="card-title">部门人效热力图明细 (Cost Efficiency Matrix)</div>
+          <n-data-table :columns="columns" :data="tableData" :pagination="{ pageSize: 5 }" />
         </div>
       </n-gi>
     </n-grid>
@@ -69,6 +98,7 @@ import request from '../utils/request'
 const lastUpdate = ref(new Date().toLocaleString())
 const deptCostRef = ref<HTMLElement | null>(null)
 const perfMixRef = ref<HTMLElement | null>(null)
+const radarRef = ref<HTMLElement | null>(null)
 const tableData = ref([])
 const stats = reactive({
     roi: 0,
@@ -98,6 +128,7 @@ const loadData = async () => {
 
         initDeptChart(data.deptCost)
         initPerfChart(data.perfDistribution)
+        initRadarChart()
     } catch (e) {}
 }
 
@@ -142,8 +173,43 @@ const initPerfChart = (data: any[]) => {
     myChart.setOption(option)
 }
 
+const initRadarChart = () => {
+    if (!radarRef.value) return
+    const myChart = echarts.init(radarRef.value)
+    const option = {
+        radar: {
+            indicator: [
+                { name: '团队活力', max: 100 },
+                { name: '人才储备', max: 100 },
+                { name: '成本控制', max: 100 },
+                { name: '绩效达成', max: 100 },
+                { name: '创新能力', max: 100 },
+                { name: '流程效率', max: 100 }
+            ],
+            shape: 'circle',
+            splitArea: { show: false }
+        },
+        series: [{
+            type: 'radar',
+            data: [{
+                value: [85, 76, 92, 88, 65, 78],
+                name: '健康指标',
+                areaStyle: { color: 'rgba(99, 102, 241, 0.4)' },
+                lineStyle: { color: '#6366f1' },
+                itemStyle: { color: '#6366f1' }
+            }]
+        }]
+    }
+    myChart.setOption(option)
+}
+
 onMounted(() => {
     loadData()
+    window.addEventListener('resize', () => {
+        echarts.getInstanceByDom(deptCostRef.value!)?.resize()
+        echarts.getInstanceByDom(perfMixRef.value!)?.resize()
+        echarts.getInstanceByDom(radarRef.value!)?.resize()
+    })
 })
 </script>
 
@@ -171,11 +237,20 @@ onMounted(() => {
 .value { font-size: 32px; font-weight: 800; margin: 8px 0; }
 .trend { font-size: 12px; background: rgba(255, 255, 255, 0.2); display: inline-block; padding: 2px 8px; border-radius: 20px; }
 
-.chart-card, .detail-card {
+.chart-card, .detail-card, .sub-stats {
   padding: 24px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
 }
+.sub-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px 40px;
+    margin-bottom: 0px;
+}
+.sub-item { text-align: center; }
+.sub-label { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+.sub-value { font-size: 20px; font-weight: 700; color: #1e293b; }
 .card-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: #1e293b; }
 </style>

@@ -10,6 +10,9 @@
             <n-radio-button value="kanban">
                 <n-icon :component="BriefcaseOutline" style="margin-right: 5px; position: relative; top: 2px;" />看板
             </n-radio-button>
+            <n-radio-button value="jobs">
+                <n-icon :component="ListOutline" style="margin-right: 5px; position: relative; top: 2px;" />职位
+            </n-radio-button>
             <n-radio-button value="calendar">
                 <n-icon :component="CalendarOutline" style="margin-right: 5px; position: relative; top: 2px;" />日历
             </n-radio-button>
@@ -66,7 +69,7 @@
       </div>
     
     <!-- 日历视图 -->
-    <div v-else class="glass-effect" style="flex: 1; padding: 24px; border-radius: 12px; background: white; overflow-y: auto;">
+    <div v-else-if="viewMode === 'calendar'" class="glass-effect" style="flex: 1; padding: 24px; border-radius: 12px; background: white; overflow-y: auto;">
         <n-calendar
             v-model:value="calendarValue"
             #="{ year, month, date }"
@@ -77,6 +80,15 @@
                 </n-tag>
             </div>
         </n-calendar>
+    </div>
+
+    <!-- 职位列表视图 -->
+    <div v-else class="jobs-list-view glass-effect">
+         <n-data-table
+            :columns="jobColumns"
+            :data="jobList"
+            :loading="loadingJobs"
+         />
     </div>
     </div>
 
@@ -113,7 +125,7 @@
                         <n-tag type="info">{{ currentCandidate?.jobTitle }}</n-tag>
                     </div>
                     
-                    <n-descriptions column="1" label-placement="left" bordered>
+                    <n-descriptions :column="1" label-placement="left" bordered>
                         <n-descriptions-item label="学历">{{ currentCandidate?.education }}</n-descriptions-item>
                         <n-descriptions-item label="经验">{{ currentCandidate?.experienceYears }} 年</n-descriptions-item>
                         <n-descriptions-item label="电话">{{ currentCandidate?.phone }}</n-descriptions-item>
@@ -186,11 +198,53 @@
         </template>
     </n-modal>
 
+    <!-- 职位分享海报弹窗 -->
+    <n-modal v-model:show="showPosterModal" preset="card" title="职位分享海报" style="width: 450px" class="poster-modal">
+        <div class="poster-card glass-effect" id="job-poster">
+            <div class="poster-header">
+                <div class="brand">
+                    <img src="/logo.png" alt="Logo" />
+                    <span>Cloud Workshop</span>
+                </div>
+                <div class="hiring-tag">WE ARE HIRING</div>
+            </div>
+            
+            <div class="poster-body">
+                <h1 class="job-title">{{ currentJob?.jobTitle }}</h1>
+                <div class="job-meta">
+                    <n-tag :bordered="false" type="primary" size="small">{{ currentJob?.location || '远程/南京' }}</n-tag>
+                    <n-tag :bordered="false" type="success" size="small">{{ currentJob?.salaryRange || '薪资面议' }}</n-tag>
+                </div>
+                
+                <n-divider title-placement="left">职位简介</n-divider>
+                <p class="job-desc">{{ currentJob?.jobDesc }}</p>
+                
+                <n-divider title-placement="left">应聘渠道</n-divider>
+                <div class="apply-footer">
+                    <div class="qr-placeholder">
+                        <n-icon :component="QrCodeOutline" size="48" color="#6366f1" />
+                        <span>扫描查看详情</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="poster-footer">
+                期待优秀的你加入我们！
+            </div>
+        </div>
+        <template #footer>
+            <n-button type="primary" block @click="message.info('长按图片或使用快捷键截图保存')">
+                <template #icon><n-icon :component="CloudDownloadOutline" /></template>
+                保存海报
+            </n-button>
+        </template>
+    </n-modal>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, h } from 'vue'
 import { 
   NButton, NIcon, NSpace, NInput, NTag, NAvatar, NModal, NForm, NFormItem, 
   NSelect, NInputNumber, useMessage, NDescriptions, NDescriptionsItem, NScrollbar,
@@ -198,7 +252,8 @@ import {
 } from 'naive-ui'
 import { 
   AddOutline, SearchOutline, SchoolOutline, BriefcaseOutline, ChevronForwardOutline,
-  CalendarOutline, ChatbubbleEllipsesOutline
+  CalendarOutline, ChatbubbleEllipsesOutline, ListOutline, ShareSocialOutline,
+  QrCodeOutline, CloudDownloadOutline
 } from '@vicons/ionicons5'
 import { 
     getJobs, createJob, getCandidates, updateCandidateStatus,
@@ -237,6 +292,11 @@ const interviewForm = reactive({
     result: 0
 })
 
+const jobList = ref<any[]>([])
+const loadingJobs = ref(false)
+const showPosterModal = ref(false)
+const currentJob = ref<any>(null)
+
 // Define interface for Candidate
 interface Candidate {
   id: number;
@@ -272,7 +332,20 @@ const loadData = async () => {
         
         // Load all interviews for calendar
         loadAllInterviews()
+
+        // Load Jobs
+        loadJobs()
     } catch(e) {}
+}
+
+const loadJobs = async () => {
+    loadingJobs.value = true
+    try {
+        const res: any = await getJobs()
+        jobList.value = res
+    } finally {
+        loadingJobs.value = false
+    }
 }
 
 const loadAllInterviews = async () => {
@@ -411,6 +484,23 @@ const handleCalendarEventClick = (interview: any) => {
     }
 }
 
+const openPoster = (job: any) => {
+    currentJob.value = job
+    showPosterModal.value = true
+}
+
+const jobColumns = [
+    { title: '职位名称', key: 'jobTitle' },
+    { title: '招聘人数', key: 'headCount' },
+    { title: '地点', key: 'location' },
+    { title: '创建时间', key: 'createTime', render: (row: any) => new Date(row.createTime).toLocaleDateString() },
+    { title: '状态', key: 'status', render: (row: any) => h(NTag, { type: row.status === 1 ? 'success' : 'error' }, { default: () => row.status === 1 ? '进行中' : '已关闭' }) },
+    { title: '操作', key: 'actions', render: (row: any) => h(NSpace, null, { default: () => [
+        h(NButton, { size: 'small', quaternary: true, type: 'primary', onClick: () => openPoster(row) }, { icon: () => h(NIcon, { component: ShareSocialOutline }), default: () => '海报' }),
+        h(NButton, { size: 'small', quaternary: true, type: 'error' }, { default: () => '关闭' })
+    ]})}
+]
+
 onMounted(() => {
     loadData()
 })
@@ -519,5 +609,92 @@ onMounted(() => {
 }
 .calendar-event {
     margin-bottom: 4px;
+}
+.jobs-list-view {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* Poster Styles */
+.poster-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 20px;
+    padding: 30px;
+    color: #1e293b;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+    min-height: 500px;
+}
+.poster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.brand img { width: 30px; height: 30px; }
+.brand span { font-weight: 800; font-size: 16px; color: #6366f1; }
+.hiring-tag {
+    background: #6366f1;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.job-title {
+    font-size: 32px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    color: #0f172a;
+}
+.job-meta {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+.job-desc {
+    color: #475569;
+    line-height: 1.6;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+.apply-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+}
+.qr-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 12px;
+    border: 1px dashed #6366f1;
+}
+.qr-placeholder span { font-size: 12px; color: #6366f1; font-weight: 600; }
+.poster-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
 }
 </style>

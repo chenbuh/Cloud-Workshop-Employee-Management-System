@@ -2,8 +2,11 @@
   <div class="mind-node-wrapper">
     <!-- 节点本身 -->
     <div class="mind-node-content glass-limit" :class="{ 'is-root': isRoot }">
-      <div class="node-body" @mouseenter="hover = true" @mouseleave="hover = false">
-        <div class="node-title">{{ data.deptName }}</div>
+      <div class="node-body" @mouseenter="hover = true" @mouseleave="mouseLeave">
+        <div class="node-title">
+            {{ data.deptName }}
+            <span class="emp-badge" v-if="data.empCount > 0">{{ data.empCount }}人</span>
+        </div>
         <div class="node-meta" v-if="data.leader">负责人: {{ data.leader }}</div>
         
         <!-- 悬浮操作栏 -->
@@ -23,11 +26,16 @@
             </n-button>
           </div>
         </transition>
+
+        <!-- 折叠/展开 触发器 -->
+        <div class="collapse-trigger" v-if="data.children && data.children.length > 0" @click.stop="isCollapsed = !isCollapsed">
+            <n-icon :component="isCollapsed ? AddCircleOutline : RemoveCircleOutline" />
+        </div>
       </div>
     </div>
 
     <!-- 子节点容器 (递归) -->
-    <div class="node-children" v-if="data.children && data.children.length > 0">
+    <div class="node-children" v-if="data.children && data.children.length > 0" v-show="!isCollapsed">
       <div class="child-connector" v-for="child in data.children" :key="child.id">
         <DeptMindNode 
           :data="child" 
@@ -44,7 +52,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { NButton, NIcon } from 'naive-ui'
-import { AddOutline, CreateOutline, TrashOutline, PeopleOutline } from '@vicons/ionicons5'
+import { AddOutline, CreateOutline, TrashOutline, PeopleOutline, AddCircleOutline, RemoveCircleOutline } from '@vicons/ionicons5'
 
 defineProps<{
   data: any
@@ -53,6 +61,11 @@ defineProps<{
 
 const emit = defineEmits(['add', 'edit', 'delete', 'view-emp'])
 const hover = ref(false)
+const isCollapsed = ref(false)
+
+const mouseLeave = () => {
+    hover.value = false
+}
 </script>
 
 <style scoped>
@@ -111,6 +124,23 @@ const hover = ref(false)
   font-size: 15px;
   color: #1e293b; /* 深色文字 */
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emp-badge {
+    font-size: 10px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+    padding: 1px 6px;
+    border-radius: 100px;
+    font-weight: 500;
+}
+
+.is-root .emp-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
 }
 
 .node-meta {
@@ -133,6 +163,32 @@ const hover = ref(false)
   border-radius: 20px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   border: 1px solid #f1f5f9;
+}
+
+/* 折叠触发按钮 */
+.collapse-trigger {
+    position: absolute;
+    right: -24px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #94a3b8;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    z-index: 3;
+    transition: all 0.2s;
+}
+.collapse-trigger:hover {
+    color: #6366f1;
+    transform: translateY(-50%) scale(1.2);
+}
+.is-root .collapse-trigger {
+    background: transparent;
+    color: rgba(255,255,255,0.7);
+}
+.is-root .collapse-trigger:hover {
+    color: #fff;
 }
 
 /* 子节点容器 layout */

@@ -35,4 +35,7 @@ public class SysDept implements Serializable {
 
     @TableField(exist = false)
     private List<SysDept> children = new ArrayList<>();
+
+    @TableField(exist = false)
+    private Long empCount;
 }

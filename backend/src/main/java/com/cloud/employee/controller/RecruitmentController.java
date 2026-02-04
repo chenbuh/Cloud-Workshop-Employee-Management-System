@@ -3,11 +3,15 @@ package com.cloud.employee.controller;
 import com.cloud.employee.common.result.Result;
 import com.cloud.employee.entity.RecCandidate;
 import com.cloud.employee.entity.RecJob;
-import com.cloud.employee.mapper.RecCandidateMapper;
-import com.cloud.employee.mapper.RecJobMapper;
 import com.cloud.employee.vo.RecCandidateVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import com.cloud.employee.service.IRecCandidateService;
+import com.cloud.employee.service.IRecInterviewService;
+import com.cloud.employee.service.IRecJobService;
+import com.cloud.employee.vo.RecInterviewVO;
+import com.cloud.employee.entity.RecInterview;
 
 import java.util.Date;
 import java.util.List;
@@ -17,23 +21,26 @@ import java.util.List;
 public class RecruitmentController {
 
     @Autowired
-    private RecJobMapper jobMapper;
+    private IRecJobService jobService;
 
     @Autowired
-    private RecCandidateMapper candidateMapper;
+    private IRecCandidateService candidateService;
+
+    @Autowired
+    private IRecInterviewService interviewService;
 
     // --- Job Management ---
 
     @GetMapping("/jobs")
     public Result<List<RecJob>> listJobs() {
-        return Result.success(jobMapper.selectList(null));
+        return Result.success(jobService.list());
     }
 
     @PostMapping("/jobs")
     public Result<Boolean> createJob(@RequestBody RecJob job) {
         job.setCreateTime(new Date());
         job.setStatus(1);
-        jobMapper.insert(job);
+        jobService.save(job);
         return Result.success(true);
     }
 
@@ -41,67 +48,83 @@ public class RecruitmentController {
 
     @GetMapping("/candidates")
     public Result<List<RecCandidateVO>> listCandidates() {
-        return Result.success(candidateMapper.selectListWithJob());
+        return Result.success(candidateService.selectListWithJob());
     }
 
     @PostMapping("/candidates")
     public Result<Boolean> createCandidate(@RequestBody RecCandidate candidate) {
         candidate.setCreateTime(new Date());
         candidate.setStatus(1); // Default: New Resume
-        candidateMapper.insert(candidate);
+        candidateService.save(candidate);
         return Result.success(true);
     }
 
     @PutMapping("/candidates/status")
     public Result<Boolean> updateCandidateStatus(@RequestBody RecCandidate candidate) {
-        RecCandidate existing = candidateMapper.selectById(candidate.getId());
+        RecCandidate existing = candidateService.getById(candidate.getId());
         if (existing == null)
             return Result.error("Candidate not found");
 
         existing.setStatus(candidate.getStatus());
         existing.setUpdateTime(new Date());
-        candidateMapper.updateById(existing);
+        candidateService.updateById(existing);
         return Result.success(true);
     }
 
     // --- Interview Management ---
 
-    @Autowired
-    private com.cloud.employee.mapper.RecInterviewMapper interviewMapper;
-
     @GetMapping("/interviews")
-    public Result<List<com.cloud.employee.entity.RecInterview>> listInterviews(
+    public Result<List<RecInterviewVO>> listInterviews(
             @RequestParam(required = false) Long candidateId) {
         if (candidateId != null) {
-            return Result.success(interviewMapper.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.cloud.employee.entity.RecInterview>()
-                            .eq("candidate_id", candidateId)
-                            .orderByDesc("create_time")));
+            // Mapping RecInterview to RecInterviewVO might be better, but for simplicity we
+            // can return VO list from service
+            // However, the current service.list returns RecInterview.
+            // Let's create a specific method for this if needed.
+            // For now, let's just use the existing selectAllWithCandidate or filter it.
+            return Result.success(interviewService.selectAllWithCandidate().stream()
+                    .filter(i -> i.getCandidateId().equals(candidateId))
+                    .collect(java.util.stream.Collectors.toList()));
         } else {
-            return Result.success(new java.util.ArrayList<com.cloud.employee.entity.RecInterview>(
-                    interviewMapper.selectAllWithCandidate()));
+            return Result.success(interviewService.selectAllWithCandidate());
         }
     }
 
+    @Autowired
+    private com.cloud.employee.service.ISysNotificationService notificationService;
+
     @PostMapping("/interviews")
-    public Result<Boolean> addInterview(@RequestBody com.cloud.employee.entity.RecInterview interview) {
+    public Result<Boolean> addInterview(@RequestBody RecInterview interview) {
         interview.setCreateTime(new Date());
         interview.setStatus(0); // Pending
-        interviewMapper.insert(interview);
+        interviewService.save(interview);
 
         // Update candidate status to "Interviewing" if not already
-        RecCandidate candidate = candidateMapper.selectById(interview.getCandidateId());
+        RecCandidate candidate = candidateService.getById(interview.getCandidateId());
         if (candidate != null && candidate.getStatus() < 3) {
             candidate.setStatus(3);
-            candidateMapper.updateById(candidate);
+            candidateService.updateById(candidate);
+        }
+
+        // Send notification to the interviewer
+        if (interview.getInterviewerId() != null) {
+            com.cloud.employee.entity.SysNotification notify = new com.cloud.employee.entity.SysNotification();
+            notify.setUserId(interview.getInterviewerId());
+            notify.setTitle("新面试安排提醒");
+            notify.setContent("您有一场新的面试安排，候选人：" + (candidate != null ? candidate.getName() : "未知") + "，时间："
+                    + interview.getInterviewTime());
+            notify.setType("info");
+            notify.setIsRead(0);
+            notify.setCreateTime(new Date());
+            notificationService.save(notify);
         }
 
         return Result.success(true);
     }
 
     @PutMapping("/interviews")
-    public Result<Boolean> updateInterview(@RequestBody com.cloud.employee.entity.RecInterview interview) {
-        interviewMapper.updateById(interview);
+    public Result<Boolean> updateInterview(@RequestBody RecInterview interview) {
+        interviewService.updateById(interview);
         return Result.success(true);
     }
 }
