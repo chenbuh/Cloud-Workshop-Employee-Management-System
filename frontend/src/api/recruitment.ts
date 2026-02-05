@@ -37,6 +37,15 @@ export function parseResume(text: string) {
     })
 }
 
+export function getInterviews(params?: any) {
+    return request({
+        url: '/recruitment/interviews',
+        method: 'get',
+        params
+    })
+}
+
+
 export function saveCandidate(data: any) {
     return request({
         url: '/recruitment/candidates',
@@ -56,30 +65,6 @@ export function updateCandidateStatus(data: any) {
 export function updateCandidate(data: any) {
     return request({
         url: '/recruitment/candidates',
-        method: 'put',
-        data
-    })
-}
-
-export function getInterviews(params?: any) {
-    return request({
-        url: '/recruitment/interviews',
-        method: 'get',
-        params
-    })
-}
-
-export function addInterview(data: any) {
-    return request({
-        url: '/recruitment/interviews',
-        method: 'post',
-        data
-    })
-}
-
-export function updateInterview(data: any) {
-    return request({
-        url: '/recruitment/interviews',
         method: 'put',
         data
     })

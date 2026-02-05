@@ -53,6 +53,7 @@
                <n-icon :component="CheckmarkCircleOutline" /> 已上传
            </div>
         </n-form-item>
+
         <n-form-item label="合同内容">
           <rich-editor v-model="formValue.content" style="width: 100%" />
         </n-form-item>
@@ -68,6 +69,7 @@
     <!-- 预览 Modal -->
     <n-modal v-model:show="showPreview" preset="card" title="合同在线预览" style="width: 800px" class="preview-modal glass-modal">
         <div class="contract-preview-box" id="contract-view">
+<<<<<<< HEAD
             <div v-if="previewData?.fileUrl" style="height: 100%; min-height: 800px">
                 <iframe :src="previewData.fileUrl" style="width: 100%; height: 800px; border: none;"></iframe>
             </div>
@@ -89,6 +91,24 @@
                         <p>乙方（签字）：{{ previewData?.employeeName }}</p>
                         <p>日期：{{ previewData?.signDate ? moment(previewData?.signDate).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD') }}</p>
                     </div>
+=======
+            <div class="contract-header">
+                <h1>{{ previewData?.title }}</h1>
+                <div class="contract-badge">{{ previewData?.type }}</div>
+            </div>
+            <div class="contract-seal" v-if="previewData?.status === 1">
+                <div class="seal-inner">已签署</div>
+            </div>
+            <div class="contract-body" v-html="previewData?.content"></div>
+            <div class="contract-footer">
+                <div class="sign-block">
+                    <p>甲方（盖章）：Cloud Workshop 科技有限公司</p>
+                    <p>日期：{{ previewData?.signDate ? moment(previewData?.signDate).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD') }}</p>
+                </div>
+                <div class="sign-block">
+                    <p>乙方（签字）：{{ previewData?.employeeName }}</p>
+                    <p>日期：{{ previewData?.signDate ? moment(previewData?.signDate).format('YYYY-MM-DD') : moment().format('YYYY-MM-DD') }}</p>
+>>>>>>> 77a6d4164c0efd5363de91b6cd994272fcab049c
                 </div>
             </div>
         </div>
@@ -96,6 +116,7 @@
             <n-space justify="end">
                 <n-button @click="showPreview = false">关闭预览</n-button>
                 <n-button type="primary" secondary @click="printContract" v-if="!previewData?.fileUrl">
+
                     <template #icon><n-icon :component="PrintOutline" /></template>
                     打印/导出 PDF
                 </n-button>
@@ -113,6 +134,7 @@ import {
   NUpload
 } from 'naive-ui'
 import { Add, EyeOutline, CreateOutline, TrashOutline, PrintOutline, CheckmarkCircleOutline } from '@vicons/ionicons5'
+
 import { getContractList, saveContract, deleteContract } from '../api/contract'
 import { getEmployeeList } from '../api/employee'
 import RichEditor from '../components/RichEditor.vue'
@@ -129,6 +151,7 @@ const employees = ref<any[]>([])
 const previewData = ref<any>(null)
 const token = localStorage.getItem('token')
 
+
 const dateRange = ref<[number, number] | null>(null)
 
 const formValue = ref({
@@ -139,6 +162,7 @@ const formValue = ref({
   status: 1,
   content: '',
   fileUrl: '',
+
   startDate: null as any,
   endDate: null as any
 })
@@ -152,6 +176,7 @@ const handleUploadFinish = ({ file, event }: any) => {
         message.error(res.data || '上传失败')
     }
 }
+
 
 const typeOptions = [
   { label: '劳动合同', value: '劳动合同' },
@@ -211,12 +236,14 @@ const loadData = async () => {
 
 const handleCreate = () => {
   formValue.value = { id: undefined, employeeId: null, title: '', type: '劳动合同', status: 1, content: '', fileUrl: '', startDate: null, endDate: null }
+
   dateRange.value = null
   showModal.value = true
 }
 
 const handleEdit = (row: any) => {
   formValue.value = { ...row, fileUrl: row.fileUrl || '' }
+
   dateRange.value = row.startDate ? [new Date(row.startDate).getTime(), new Date(row.endDate).getTime()] : null
   showModal.value = true
 }

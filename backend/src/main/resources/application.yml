@@ -63,3 +63,4 @@ upload:
   # Static mapping for web access
   mapping: /api/v1/files/**
 
+

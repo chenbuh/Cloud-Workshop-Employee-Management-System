@@ -122,11 +122,16 @@
             <scope>test</scope>
         </dependency>
 
+<<<<<<< HEAD
+=======
+        <!-- Mail -->
+>>>>>>> 77a6d4164c0efd5363de91b6cd994272fcab049c
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+<<<<<<< HEAD
         <!-- Spring Boot DevTools -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -134,6 +139,8 @@
             <optional>true</optional>
         </dependency>
 
+=======
+>>>>>>> 77a6d4164c0efd5363de91b6cd994272fcab049c
         <!-- iText PDF -->
         <dependency>
             <groupId>com.itextpdf</groupId>
